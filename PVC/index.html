@@ -1,495 +1,759 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Растения против Кактусов</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Plants vs Cactus | Оборона сада</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            background: linear-gradient(135deg, #87CEEB, #90EE90);
+        * {
             margin: 0;
-            padding: 20px;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
             min-height: 100vh;
-        }
-        canvas {
-            border: 3px solid #2E8B57;
-            background-color: #98FB98;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-        }
-        h1 {
-            color: #006400;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-            margin-bottom: 10px;
-        }
-        p {
-            font-size: large;
-            color: #2F4F4F;
-            margin-bottom: 20px;
-        }
-        #scoreDisplay {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            font-weight: bold;
-            font-size: 24px;
-            color: #FF4500;
-            background: rgba(255,255,255,0.8);
-            padding: 5px 15px;
-            border-radius: 20px;
-            border: 2px solid #FF6347;
-        }
-        #playerNameDisplay {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            font-weight: bold;
-            font-size: 24px;
-            color: #228B22;
-            background: rgba(255,255,255,0.8);
-            padding: 5px 15px;
-            border-radius: 20px;
-            border: 2px solid #32CD32;
-        }
-        #controls {
-            margin-top: 20px;
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-        }
-        button {
-            padding: 12px 25px;
-            font-size: 16px;
-            cursor: pointer;
-            background: linear-gradient(45deg, #32CD32, #228B22);
-            color: white;
-            border: none;
-            border-radius: 25px;
-            font-weight: bold;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-            background: linear-gradient(45deg, #228B22, #006400);
-        }
-        #nameModal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
+            background: linear-gradient(135deg, #1a472a 0%, #0d2818 100%);
             display: flex;
             justify-content: center;
             align-items: center;
+            font-family: 'Segoe UI', 'Courier New', monospace;
+            cursor: crosshair;
+            padding: 16px;
+        }
+
+        .game-wrapper {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .game-container {
+            background: linear-gradient(145deg, #4a3520, #2a1a0a);
+            padding: clamp(8px, 2vw, 24px);
+            border-radius: clamp(16px, 4vw, 40px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,200,100,0.3);
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: clamp(12px, 3vw, 24px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+            cursor: crosshair;
+            background: radial-gradient(circle at 20% 30%, #4a7c3f, #2a5a2a);
+            width: 100%;
+            height: auto;
+            aspect-ratio: 900 / 550;
+        }
+
+        .ui-panel {
+            margin-top: clamp(12px, 3vw, 20px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: clamp(10px, 2vw, 20px);
+            flex-wrap: wrap;
+            background: rgba(0,0,0,0.6);
+            padding: clamp(8px, 2vw, 14px) clamp(16px, 3vw, 28px);
+            border-radius: 60px;
+            backdrop-filter: blur(8px);
+        }
+
+        .stats {
+            display: flex;
+            gap: clamp(10px, 2vw, 25px);
+            flex-wrap: wrap;
+        }
+
+        .score-box, .health-box, .wave-box {
+            background: linear-gradient(145deg, #1a1a1a, #0a0a0a);
+            padding: clamp(6px, 1.5vw, 10px) clamp(16px, 3vw, 28px);
+            border-radius: 60px;
+            color: #ffd966;
+            font-weight: bold;
+            font-size: clamp(18px, 5vw, 28px);
+            letter-spacing: 2px;
+            text-shadow: 0 0 5px #ff6600;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .score-box span, .health-box span, .wave-box span {
+            color: #aaa;
+            font-size: clamp(12px, 3vw, 16px);
+            letter-spacing: 1px;
+        }
+
+        .score-box .value, .health-box .value, .wave-box .value {
+            color: #ffaa44;
+            font-weight: bold;
+        }
+
+        button {
+            background: linear-gradient(145deg, #ffaa33, #ff8800);
+            border: none;
+            padding: clamp(8px, 2vw, 12px) clamp(20px, 4vw, 35px);
+            border-radius: 60px;
+            font-weight: bold;
+            font-size: clamp(16px, 4vw, 20px);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #2a1a0a;
+            font-family: inherit;
+            box-shadow: 0 4px 0 #8b5a2b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        button:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #8b5a2b;
+        }
+
+        .controls {
+            background: rgba(0,0,0,0.5);
+            padding: clamp(6px, 1.5vw, 10px) clamp(12px, 2vw, 20px);
+            border-radius: 60px;
+            color: #cccc88;
+            font-size: clamp(11px, 3vw, 14px);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .controls span {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Для тач-устройств */
+        @media (hover: none) {
+            body {
+                cursor: default;
+            }
+            canvas {
+                cursor: pointer;
+            }
+            .controls .desktop-only {
+                display: none;
+            }
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 8px;
+            }
+            .ui-panel {
+                flex-direction: column;
+                border-radius: 28px;
+            }
+            .stats {
+                justify-content: center;
+            }
+            .controls {
+                justify-content: center;
+                text-align: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .score-box, .health-box, .wave-box {
+                padding: 5px 14px;
+            }
+            button {
+                padding: 8px 20px;
+            }
+        }
+
+        @keyframes hitFlash {
+            0% { filter: brightness(1); }
+            50% { filter: brightness(1.4); }
+            100% { filter: brightness(1); }
+        }
+
+        .shake {
+            animation: shake 0.3s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%,100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        /* Индикатор загрузки */
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            background: rgba(0,0,0,0.8);
+            padding: 20px 40px;
+            border-radius: 60px;
             z-index: 1000;
-        }
-        #nameForm {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            text-align: center;
-        }
-        #nameInput {
-            padding: 10px;
-            font-size: 16px;
-            margin: 10px 0;
-            width: 200px;
         }
     </style>
 </head>
 <body>
-    <h1>🌵 Растения против Кактусов 🌿</h1>
-    
-    <div style="background: rgba(255,255,255,0.9); padding: 15px; border-radius: 10px; margin: 10px auto; max-width: 600px; border: 2px solid #32CD32;">
-        <p>🎯 Используйте стрелки ВВЕРХ и ВНИЗ для движения, ПРОБЕЛ для стрельбы</p>
-    </div>
-    
-    <canvas id="gameCanvas" width="800" height="400"></canvas>
-    
-    <div id="controls">
-        <button id="pauseButton">⏸️ Пауза</button>
-        <button id="newGameButton">🔄 Новая игра</button>
-    </div>
-    
-    <div id="scoreDisplay">Очки: 0</div>
-    <div id="playerNameDisplay">Игрок: Гость</div>
-
-    <!-- Модальное окно для ввода имени -->
-    <div id="nameModal">
-        <div id="nameForm">
-            <h2>Введите ваше имя</h2>
-            <input type="text" id="nameInput" placeholder="Ваше имя" maxlength="15">
-            <br>
-            <button onclick="startGame()">Начать игру</button>
+<div class="game-wrapper">
+    <div class="game-container" id="gameContainer">
+        <canvas id="gameCanvas" width="900" height="550"></canvas>
+        <div class="ui-panel">
+            <div class="stats">
+                <div class="score-box">
+                    <span>🌵</span>
+                    <span class="value" id="scoreValue">0</span>
+                </div>
+                <div class="health-box">
+                    <span>❤️</span>
+                    <span class="value" id="healthValue">5</span>
+                </div>
+                <div class="wave-box">
+                    <span>🌊</span>
+                    <span class="value" id="waveValue">1</span>
+                </div>
+            </div>
+            <button id="resetBtn">
+                <span>🔄</span> Новая игра
+            </button>
+            <div class="controls">
+                <span>🎯 <span class="desktop-only">мышка — прицел</span><span class="mobile-only">палец — наводка</span></span>
+                <span>🔫 <span class="desktop-only">клик — выстрел</span><span class="mobile-only">тап — выстрел</span></span>
+            </div>
         </div>
     </div>
+</div>
+
+<style>
+    .mobile-only {
+        display: none;
+    }
+    @media (max-width: 768px) {
+        .mobile-only {
+            display: inline;
+        }
+        .desktop-only {
+            display: none;
+        }
+    }
+</style>
 
 <script>
-// Получаем элементы
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const nameModal = document.getElementById('nameModal');
-const nameInput = document.getElementById('nameInput');
-
-// Константы игры
-const PLAYER_SPEED = 8;
-const BULLET_SPEED = 7;
-const ENEMY_SPEED_MIN = 1;
-const ENEMY_SPEED_MAX = 4;
-const SPAWN_INTERVAL = 1500;
-
-// Создаем спрайты
-function createSprite(width, height, color) {
-    const sprite = document.createElement('canvas');
-    sprite.width = width;
-    sprite.height = height;
-    const spriteCtx = sprite.getContext('2d');
+    // ========== АДАПТИВНАЯ ИГРА ==========
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
     
-    const gradient = spriteCtx.createLinearGradient(0, 0, width, height);
+    // Размеры canvas фиксированы в логике, но CSS масштабирует
+    const CANVAS_W = 900;
+    const CANVAS_H = 550;
     
-    if (color === 'green') {
-        gradient.addColorStop(0, '#32CD32');
-        gradient.addColorStop(1, '#228B22');
-    } else if (color === 'red') {
-        gradient.addColorStop(0, '#FF4500');
-        gradient.addColorStop(1, '#DC143C');
-    } else if (color === 'brown') {
-        gradient.addColorStop(0, '#8B4513');
-        gradient.addColorStop(1, '#A0522D');
+    let score = 0;
+    let health = 5;
+    let wave = 1;
+    let gameRunning = true;
+    let particles = [];
+    let enemies = [];
+    let mouseX = CANVAS_W/2, mouseY = CANVAS_H/2;
+    let shootSound, hitSound;
+    let bestScore = localStorage.getItem('cactusBest') || 0;
+    
+    // Параметры волн
+    let enemiesToSpawn = 5;
+    let enemiesSpawned = 0;
+    let spawnCooldown = 0;
+    let waveInProgress = true;
+    let nextWaveDelay = 0;
+    
+    let hitFlash = 0;
+    let shakeAmount = 0;
+    
+    function updateUI() {
+        document.getElementById('scoreValue').innerText = score;
+        document.getElementById('healthValue').innerText = health;
+        document.getElementById('waveValue').innerText = wave;
+        if(score > bestScore) {
+            bestScore = score;
+            localStorage.setItem('cactusBest', bestScore);
+        }
     }
     
-    spriteCtx.fillStyle = gradient;
-    spriteCtx.fillRect(0, 0, width, height);
-    spriteCtx.strokeStyle = 'rgba(0,0,0,0.3)';
-    spriteCtx.lineWidth = 2;
-    spriteCtx.strokeRect(2, 2, width-4, height-4);
+    function playSound(sound) {
+        if(sound && sound.play) {
+            try {
+                sound.currentTime = 0;
+                sound.play().catch(e => {});
+            } catch(e) {}
+        }
+    }
     
-    return sprite;
-}
-
-const sprites = {
-    player: createSprite(50, 50, 'green'),
-    bullet: createSprite(15, 8, 'red'),
-    small_cactus: createSprite(30, 40, 'brown'),
-    medium_cactus: createSprite(50, 60, 'brown'),
-    big_cactus: createSprite(70, 80, 'brown')
-};
-
-// Класс игрока
-class Player {
-    constructor(x, y) {
-        this.x = x;
-        this.y = y;
-        this.width = 50;
-        this.height = 50;
-        this.bullets = [];
-        this.lastShot = 0;
-        this.shotDelay = 300;
-    }
-
-    draw() {
-        ctx.drawImage(sprites['player'], this.x, this.y, this.width, this.height);
-        
-        ctx.fillStyle = '#FFD700';
-        ctx.beginPath();
-        ctx.arc(this.x + 35, this.y + 25, 8, 0, Math.PI * 2);
-        ctx.fill();
-        
-        ctx.fillStyle = '#000';
-        ctx.beginPath();
-        ctx.arc(this.x + 32, this.y + 23, 2, 0, Math.PI * 2);
-        ctx.arc(this.x + 38, this.y + 23, 2, 0, Math.PI * 2);
-        ctx.fill();
-    }
-
-    shoot(currentTime) {
-        if (currentTime - this.lastShot > this.shotDelay) {
-            this.bullets.push({
-                x: this.x + this.width,
-                y: this.y + this.height / 2 - 4
+    function addExplosion(x, y) {
+        for(let i = 0; i < 12; i++) {
+            particles.push({
+                x: x, y: y,
+                vx: (Math.random() - 0.5) * 6,
+                vy: (Math.random() - 0.5) * 6 - 2,
+                life: 0.8,
+                size: Math.random() * 5 + 3,
+                color: `hsl(${Math.random() * 40 + 20}, 80%, 55%)`
             });
-            this.lastShot = currentTime;
         }
     }
-
-    moveBullets() {
-        for (let bullet of this.bullets) {
-            bullet.x += BULLET_SPEED;
+    
+    function addDust(x, y) {
+        for(let i = 0; i < 6; i++) {
+            particles.push({
+                x: x, y: y,
+                vx: (Math.random() - 0.5) * 3,
+                vy: (Math.random() - 0.5) * 2 - 1,
+                life: 0.5,
+                size: Math.random() * 4 + 2,
+                color: `rgba(80, 60, 30, ${Math.random() * 0.5 + 0.2})`
+            });
         }
     }
-
-    removeOutOfBoundsBullets() {
-        this.bullets = this.bullets.filter(bullet => bullet.x < canvas.width);
-    }
-
-    drawBullets() {
-        for (let bullet of this.bullets) {
-            ctx.drawImage(sprites['bullet'], bullet.x, bullet.y, 15, 8);
+    
+    class Cactus {
+        constructor(x, y, type, hp) {
+            this.x = x;
+            this.y = y;
+            this.type = type;
+            this.hp = hp;
+            this.maxHp = hp;
+            this.size = (type === 'big' ? 45 : (type === 'medium' ? 35 : 25));
+            this.speedX = (Math.random() - 0.5) * 0.8;
+            this.speedY = (Math.random() - 0.5) * 0.5;
         }
-    }
-
-    move(direction) {
-        switch (direction) {
-            case 'up':
-                this.y -= PLAYER_SPEED;
-                break;
-            case 'down':
-                this.y += PLAYER_SPEED;
-                break;
-        }
-        this.y = Math.max(0, Math.min(canvas.height - this.height, this.y));
-    }
-}
-
-// Класс врага
-class Enemy {
-    constructor(x, y, size, type) {
-        this.x = x;
-        this.y = y;
-        this.speed = Math.random() * (ENEMY_SPEED_MAX - ENEMY_SPEED_MIN) + ENEMY_SPEED_MIN;
-        this.size = size;
-        this.type = type;
-        this.width = size;
-        this.height = size + 10;
-    }
-
-    draw() {
-        ctx.drawImage(sprites[this.type], this.x, this.y, this.width, this.height);
         
-        ctx.strokeStyle = '#006400';
-        ctx.lineWidth = 2;
-        for (let i = 0; i < 5; i++) {
-            const offset = i * 5;
+        update() {
+            this.x += this.speedX;
+            this.y += this.speedY;
+            this.x = Math.min(Math.max(this.x, this.size/2 + 15), CANVAS_W - this.size/2 - 15);
+            this.y = Math.min(Math.max(this.y, this.size/2 + 40), CANVAS_H - this.size/2 - 20);
+        }
+        
+        draw(ctx) {
+            const grad = ctx.createLinearGradient(this.x-10, this.y-10, this.x+10, this.y+10);
+            grad.addColorStop(0, '#3a7a2a');
+            grad.addColorStop(1, '#2a5a1a');
+            ctx.fillStyle = grad;
+            
+            if(this.type === 'big') {
+                ctx.beginPath();
+                ctx.ellipse(this.x, this.y, 22, 28, 0, 0, Math.PI*2);
+                ctx.fill();
+                ctx.fillStyle = '#2a6a1a';
+                ctx.beginPath();
+                ctx.ellipse(this.x-5, this.y-8, 7, 12, -0.2, 0, Math.PI*2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(this.x+5, this.y-6, 6, 10, 0.2, 0, Math.PI*2);
+                ctx.fill();
+            } else if(this.type === 'medium') {
+                ctx.beginPath();
+                ctx.ellipse(this.x, this.y, 17, 24, 0, 0, Math.PI*2);
+                ctx.fill();
+                ctx.fillStyle = '#2a6a1a';
+                ctx.beginPath();
+                ctx.ellipse(this.x-4, this.y-5, 5, 8, -0.1, 0, Math.PI*2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(this.x+3, this.y-4, 4, 7, 0.1, 0, Math.PI*2);
+                ctx.fill();
+            } else {
+                ctx.beginPath();
+                ctx.ellipse(this.x, this.y, 12, 18, 0, 0, Math.PI*2);
+                ctx.fill();
+                ctx.fillStyle = '#2a6a1a';
+                ctx.beginPath();
+                ctx.ellipse(this.x-3, this.y-3, 4, 6, -0.1, 0, Math.PI*2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(this.x+3, this.y-2, 3, 5, 0.1, 0, Math.PI*2);
+                ctx.fill();
+            }
+            
+            ctx.fillStyle = 'white';
             ctx.beginPath();
-            ctx.moveTo(this.x + 5, this.y + offset);
-            ctx.lineTo(this.x - 5, this.y + offset);
-            ctx.stroke();
+            ctx.arc(this.x-5, this.y-4, 4, 0, Math.PI*2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(this.x+5, this.y-4, 4, 0, Math.PI*2);
+            ctx.fill();
+            ctx.fillStyle = '#1a2a1a';
+            ctx.beginPath();
+            ctx.arc(this.x-5, this.y-4, 2, 0, Math.PI*2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(this.x+5, this.y-4, 2, 0, Math.PI*2);
+            ctx.fill();
+            
+            const hpPercent = this.hp / this.maxHp;
+            ctx.fillStyle = '#aa3333';
+            ctx.fillRect(this.x-15, this.y-20, 30, 5);
+            ctx.fillStyle = '#44aa44';
+            ctx.fillRect(this.x-15, this.y-20, 30 * hpPercent, 5);
             
             ctx.beginPath();
-            ctx.moveTo(this.x + this.width - 5, this.y + offset);
-            ctx.lineTo(this.x + this.width + 5, this.y + offset);
+            ctx.arc(this.x, this.y+3, 8, 0.1, Math.PI - 0.1);
+            ctx.strokeStyle = '#5a3a1a';
+            ctx.lineWidth = 2;
             ctx.stroke();
         }
-    }
-
-    move() {
-        this.x -= this.speed;
-    }
-}
-
-// Основной класс игры
-class Game {
-    constructor(canvasWidth, canvasHeight) {
-        this.canvasWidth = canvasWidth;
-        this.canvasHeight = canvasHeight;
-        this.player = new Player(50, canvasHeight / 2 - 25);
-        this.enemies = [];
-        this.spawnTimer = null;
-        this.animationFrame = null;
-        this.score = 0;
-        this.gameOver = false;
-        this.isPaused = false;
-        this.playerName = 'Гость';
-    }
-
-    init() {
-        // Очищаем предыдущие таймеры
-        if (this.spawnTimer) {
-            clearInterval(this.spawnTimer);
+        
+        hit(damage) {
+            this.hp -= damage;
+            return this.hp <= 0;
         }
-        if (this.animationFrame) {
-            cancelAnimationFrame(this.animationFrame);
-        }
-        
-        this.player = new Player(50, this.canvasHeight / 2 - 25);
-        this.enemies = [];
-        this.score = 0;
-        this.gameOver = false;
-        this.isPaused = false;
-        
-        document.getElementById('scoreDisplay').innerText = `Очки: ${this.score}`;
-        document.getElementById('playerNameDisplay').innerText = `Игрок: ${this.playerName}`;
     }
-
-    start() {
-        this.init();
+    
+    function spawnEnemy() {
+        let types = ['small', 'medium', 'big'];
+        let hpMap = { small: 1, medium: 2, big: 3 };
+        let typeIndex = Math.min(Math.floor(Math.random() * (wave/2 + 1)), 2);
+        let type = types[typeIndex];
+        let hp = hpMap[type] + Math.floor(wave / 5);
+        let x = Math.random() * (CANVAS_W - 100) + 50;
+        let y = Math.random() * (CANVAS_H - 120) + 60;
+        enemies.push(new Cactus(x, y, type, hp));
+    }
+    
+    function startWave() {
+        waveInProgress = true;
+        enemiesToSpawn = 5 + wave * 2;
+        enemiesSpawned = 0;
+        spawnCooldown = 0;
+    }
+    
+    function resetGame() {
+        gameRunning = true;
+        score = 0;
+        health = 5;
+        wave = 1;
+        enemies = [];
+        particles = [];
+        updateUI();
+        startWave();
+        hitFlash = 0;
+        shakeAmount = 0;
+    }
+    
+    function checkGameOver() {
+        if(health <= 0) {
+            gameRunning = false;
+            health = 0;
+            updateUI();
+            setTimeout(() => {
+                if(confirm(`Игра окончена! Счёт: ${score}\nЛучший: ${bestScore}\nСыграть ещё?`)) {
+                    resetGame();
+                }
+            }, 50);
+        }
+    }
+    
+    function shootAt(targetX, targetY) {
+        if(!gameRunning) return;
         
-        this.spawnTimer = setInterval(() => {
-            if (!this.isPaused && !this.gameOver) {
-                this.spawnEnemy();
+        let closest = null;
+        let minDist = 40;
+        for(let i = 0; i < enemies.length; i++) {
+            const e = enemies[i];
+            const dx = e.x - targetX;
+            const dy = e.y - targetY;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if(dist < minDist) {
+                minDist = dist;
+                closest = e;
             }
-        }, SPAWN_INTERVAL);
-
-        this.update(performance.now());
-    }
-
-    setPlayerName(name) {
-        this.playerName = name && name.trim() ? name.trim() : 'Гость';
-        document.getElementById('playerNameDisplay').innerText = `Игрок: ${this.playerName}`;
-    }
-
-    resume() {
-        this.isPaused = false;
-        document.getElementById('pauseButton').textContent = '⏸️ Пауза';
-        this.update(performance.now());
-    }
-
-    pause() {
-        this.isPaused = true;
-        document.getElementById('pauseButton').textContent = '▶️ Продолжить';
-    }
-
-    restart() {
-        // При перезапуске НЕ запрашиваем имя снова
-        this.start();
-    }
-
-    spawnEnemy() {
-        const y = Math.random() * (this.canvasHeight - 100) + 20;
-        const types = ['small_cactus', 'medium_cactus', 'big_cactus'];
-        const type = types[Math.floor(Math.random() * types.length)];
-        const sizes = { small_cactus: 30, medium_cactus: 50, big_cactus: 70 };
-        this.enemies.push(new Enemy(canvas.width, y, sizes[type], type));
-    }
-
-    update(currentTime) {
-        if (this.gameOver || this.isPaused) {
-            return;
         }
-
-        ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
         
-        // Рисуем фон
-        ctx.fillStyle = '#98FB98';
-        ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+        if(closest) {
+            playSound(hitSound);
+            const isDead = closest.hit(1);
+            addExplosion(closest.x, closest.y);
+            addDust(closest.x, closest.y);
+            hitFlash = 8;
+            if(isDead) {
+                const idx = enemies.indexOf(closest);
+                if(idx !== -1) enemies.splice(idx,1);
+                let points = (closest.type === 'big' ? 30 : (closest.type === 'medium' ? 20 : 10));
+                score += points;
+                updateUI();
+                if(enemies.length === 0 && waveInProgress && enemiesSpawned >= enemiesToSpawn) {
+                    waveInProgress = false;
+                    nextWaveDelay = 40;
+                }
+            } else {
+                shakeAmount = 3;
+            }
+        } else {
+            for(let i = 0; i < 5; i++) {
+                particles.push({
+                    x: targetX, y: targetY,
+                    vx: (Math.random() - 0.5) * 3,
+                    vy: (Math.random() - 0.5) * 3 - 1,
+                    life: 0.3,
+                    size: 3,
+                    color: '#ffaa88'
+                });
+            }
+        }
+    }
+    
+    function updateWave() {
+        if(!gameRunning) return;
         
-        // Рисуем землю
-        ctx.fillStyle = '#8FBC8F';
-        ctx.fillRect(0, this.canvasHeight - 20, this.canvasWidth, 20);
-
-        this.player.draw();
-        this.player.moveBullets();
-        this.player.removeOutOfBoundsBullets();
-        this.player.drawBullets();
-
-        // Проверка столкновений
-        for (let i = this.enemies.length - 1; i >= 0; i--) {
-            const enemy = this.enemies[i];
-            enemy.move();
-            enemy.draw();
-
-            // Проверка столкновения пуль с врагами
-            for (let j = this.player.bullets.length - 1; j >= 0; j--) {
-                const bullet = this.player.bullets[j];
-                
-                if (bullet.x < enemy.x + enemy.width &&
-                    bullet.x + 15 > enemy.x &&
-                    bullet.y < enemy.y + enemy.height &&
-                    bullet.y + 8 > enemy.y) {
-                    
-                    const points = { small_cactus: 1, medium_cactus: 2, big_cactus: 3 };
-                    this.score += points[enemy.type] || 1;
-                    
-                    this.enemies.splice(i, 1);
-                    this.player.bullets.splice(j, 1);
-                    break;
+        if(waveInProgress) {
+            if(spawnCooldown <= 0 && enemiesSpawned < enemiesToSpawn) {
+                spawnEnemy();
+                enemiesSpawned++;
+                spawnCooldown = 20;
+            } else {
+                if(spawnCooldown > 0) spawnCooldown--;
+            }
+        } else {
+            if(nextWaveDelay > 0) {
+                nextWaveDelay--;
+                if(nextWaveDelay === 0) {
+                    wave++;
+                    updateUI();
+                    startWave();
                 }
             }
-
-            // Проверка столкновения игрока с врагом
-            if (this.player.x < enemy.x + enemy.width &&
-                this.player.x + this.player.width > enemy.x &&
-                this.player.y < enemy.y + enemy.height &&
-                this.player.y + this.player.height > enemy.y) {
-                
-                this.endGame();
-                return;
-            }
-
-            if (enemy.x < -enemy.width) {
-                this.enemies.splice(i, 1);
-            }
         }
-
-        document.getElementById('scoreDisplay').innerText = `Очки: ${this.score}`;
-
-        this.animationFrame = requestAnimationFrame((time) => this.update(time));
     }
-
-    endGame() {
-        this.gameOver = true;
-        clearInterval(this.spawnTimer);
-        cancelAnimationFrame(this.animationFrame);
-        
-        setTimeout(() => {
-            alert(`Игра окончена! Ваш результат: ${this.score} очков`);
-        }, 100);
-    }
-}
-
-// Глобальная переменная игры
-let game;
-
-// Функция начала игры (вызывается из модального окна)
-function startGame() {
-    const name = nameInput.value.trim();
-    game.setPlayerName(name);
-    nameModal.style.display = 'none';
-    game.start();
-}
-
-// Обработка Enter в поле ввода имени
-nameInput.addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        startGame();
-    }
-});
-
-window.onload = function() {
-    game = new Game(canvas.width, canvas.height);
     
-    // Показываем модальное окно при загрузке
-    nameModal.style.display = 'flex';
-    nameInput.focus();
-
-    // Обработчик событий клавиатуры
-    document.addEventListener('keydown', function(event) {
-        if (game.gameOver || game.isPaused) return;
-        
-        switch(event.key) {
-            case 'ArrowUp':
-                game.player.move('up');
-                break;
-            case 'ArrowDown':
-                game.player.move('down');
-                break;
-            case ' ':
-                event.preventDefault();
-                game.player.shoot(performance.now());
-                break;
+    function updateEnemies() {
+        for(let i = 0; i < enemies.length; i++) {
+            enemies[i].update();
+            const centerX = CANVAS_W/2;
+            const centerY = CANVAS_H/2;
+            const dx = enemies[i].x - centerX;
+            const dy = enemies[i].y - centerY;
+            const distToCenter = Math.sqrt(dx*dx + dy*dy);
+            if(distToCenter < 55) {
+                enemies.splice(i,1);
+                health--;
+                updateUI();
+                shakeAmount = 12;
+                hitFlash = 15;
+                i--;
+                checkGameOver();
+                if(!gameRunning) break;
+            }
         }
-    });
-
-    // Обработчики кнопок
-    document.getElementById('pauseButton').addEventListener('click', function() {
-        if (game.gameOver) return;
         
-        if (game.isPaused) {
-            game.resume();
+        if(shakeAmount > 0) {
+            shakeAmount--;
+            const container = document.getElementById('gameContainer');
+            container.style.transform = `translate(${Math.random() * shakeAmount - shakeAmount/2}px, ${Math.random() * shakeAmount/2}px)`;
         } else {
-            game.pause();
+            document.getElementById('gameContainer').style.transform = 'translate(0,0)';
         }
-    });
-
-    document.getElementById('newGameButton').addEventListener('click', function() {
-        // При новой игре просто перезапускаем, не запрашивая имя
-        game.restart();
-    });
-};
+        
+        if(hitFlash > 0) {
+            hitFlash--;
+            canvas.style.filter = `brightness(${1 + hitFlash/30})`;
+        } else {
+            canvas.style.filter = 'brightness(1)';
+        }
+    }
+    
+    function updateParticles() {
+        for(let i = 0; i < particles.length; i++) {
+            particles[i].x += particles[i].vx;
+            particles[i].y += particles[i].vy;
+            particles[i].vy += 0.15;
+            particles[i].life -= 0.02;
+            if(particles[i].life <= 0 || particles[i].y > CANVAS_H + 50) {
+                particles.splice(i,1);
+                i--;
+            }
+        }
+    }
+    
+    function drawBackground() {
+        ctx.fillStyle = '#6a9a4a';
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+        for(let i = 0; i < 100; i++) {
+            ctx.fillStyle = `rgba(50,80,30,${Math.random() * 0.3})`;
+            ctx.beginPath();
+            ctx.moveTo(Math.random() * CANVAS_W, CANVAS_H);
+            ctx.lineTo(Math.random() * CANVAS_W, CANVAS_H - Math.random() * 30);
+            ctx.lineTo(Math.random() * CANVAS_W, CANVAS_H);
+            ctx.fill();
+        }
+        
+        ctx.fillStyle = 'rgba(255,255,200,0.6)';
+        ctx.beginPath();
+        ctx.ellipse(120, 60, 45, 35, 0, 0, Math.PI*2);
+        ctx.ellipse(170, 40, 40, 30, 0, 0, Math.PI*2);
+        ctx.ellipse(70, 45, 40, 32, 0, 0, Math.PI*2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(700, 80, 55, 40, 0, 0, Math.PI*2);
+        ctx.ellipse(760, 60, 45, 35, 0, 0, Math.PI*2);
+        ctx.ellipse(650, 70, 45, 35, 0, 0, Math.PI*2);
+        ctx.fill();
+    }
+    
+    function drawCrosshair() {
+        ctx.beginPath();
+        ctx.moveTo(mouseX-15, mouseY);
+        ctx.lineTo(mouseX-7, mouseY);
+        ctx.moveTo(mouseX+7, mouseY);
+        ctx.lineTo(mouseX+15, mouseY);
+        ctx.moveTo(mouseX, mouseY-15);
+        ctx.lineTo(mouseX, mouseY-7);
+        ctx.moveTo(mouseX, mouseY+7);
+        ctx.lineTo(mouseX, mouseY+15);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'white';
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(mouseX, mouseY, 12, 0, Math.PI*2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(mouseX, mouseY, 6, 0, Math.PI*2);
+        ctx.stroke();
+    }
+    
+    function drawParticles() {
+        for(let p of particles) {
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+            ctx.fill();
+        }
+    }
+    
+    function drawUIonCanvas() {
+        ctx.font = 'bold 24px "Segoe UI", monospace';
+        ctx.fillStyle = '#ffeeaa';
+        ctx.shadowBlur = 4;
+        ctx.fillText(`ЛУЧШИЙ: ${bestScore}`, CANVAS_W-170, 45);
+        ctx.shadowBlur = 0;
+        
+        if(!gameRunning) {
+            ctx.font = 'bold 36px monospace';
+            ctx.fillStyle = '#ffaa33';
+            ctx.shadowBlur = 6;
+            ctx.fillText('GAME OVER', CANVAS_W/2-110, CANVAS_H/2);
+            ctx.font = '18px monospace';
+            ctx.fillStyle = 'white';
+            ctx.fillText('НАЖМИТЕ "НОВАЯ ИГРА"', CANVAS_W/2-115, CANVAS_H/2+50);
+        }
+    }
+    
+    function gameLoop() {
+        if(gameRunning) {
+            updateWave();
+            updateEnemies();
+            updateParticles();
+        } else {
+            updateParticles();
+        }
+        
+        drawBackground();
+        for(let enemy of enemies) enemy.draw(ctx);
+        drawParticles();
+        drawCrosshair();
+        drawUIonCanvas();
+        
+        requestAnimationFrame(gameLoop);
+    }
+    
+    function init() {
+        updateUI();
+        resetGame();
+        
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            const audioCtx = new AudioContext();
+            function createBeep(freq, dur, vol) {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.frequency.value = freq;
+                gain.gain.value = vol;
+                osc.start();
+                gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + dur);
+                osc.stop(audioCtx.currentTime + dur);
+            }
+            shootSound = { play: () => createBeep(880, 0.15, 0.1) };
+            hitSound = { play: () => createBeep(440, 0.25, 0.12) };
+        } catch(e) {
+            shootSound = { play: () => {} };
+            hitSound = { play: () => {} };
+        }
+        
+        function getCanvasCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = CANVAS_W / rect.width;
+            const scaleY = CANVAS_H / rect.height;
+            let clientX, clientY;
+            
+            if(e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+                e.preventDefault();
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            
+            let canvasX = (clientX - rect.left) * scaleX;
+            let canvasY = (clientY - rect.top) * scaleY;
+            canvasX = Math.min(Math.max(canvasX, 0), CANVAS_W);
+            canvasY = Math.min(Math.max(canvasY, 0), CANVAS_H);
+            return { x: canvasX, y: canvasY };
+        }
+        
+        canvas.addEventListener('mousemove', (e) => {
+            const coords = getCanvasCoords(e);
+            mouseX = coords.x;
+            mouseY = coords.y;
+        });
+        
+        canvas.addEventListener('click', (e) => {
+            const coords = getCanvasCoords(e);
+            shootAt(coords.x, coords.y);
+            playSound(shootSound);
+        });
+        
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const coords = getCanvasCoords(e);
+            mouseX = coords.x;
+            mouseY = coords.y;
+        });
+        
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const coords = getCanvasCoords(e);
+            mouseX = coords.x;
+            mouseY = coords.y;
+            shootAt(coords.x, coords.y);
+            playSound(shootSound);
+        });
+        
+        document.getElementById('resetBtn').addEventListener('click', () => { resetGame(); });
+        
+        gameLoop();
+    }
+    
+    init();
 </script>
 </body>
 </html>
