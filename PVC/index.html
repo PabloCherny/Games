@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Растения против Кактусов</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: linear-gradient(135deg, #87CEEB, #90EE90);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        canvas {
+            border: 3px solid #2E8B57;
+            background-color: #98FB98;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #006400;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            margin-bottom: 10px;
+        }
+        p {
+            font-size: large;
+            color: #2F4F4F;
+            margin-bottom: 20px;
+        }
+        #scoreDisplay {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-weight: bold;
+            font-size: 24px;
+            color: #FF4500;
+            background: rgba(255,255,255,0.8);
+            padding: 5px 15px;
+            border-radius: 20px;
+            border: 2px solid #FF6347;
+        }
+        #playerNameDisplay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-weight: bold;
+            font-size: 24px;
+            color: #228B22;
+            background: rgba(255,255,255,0.8);
+            padding: 5px 15px;
+            border-radius: 20px;
+            border: 2px solid #32CD32;
+        }
+        #controls {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        button {
+            padding: 12px 25px;
+            font-size: 16px;
+            cursor: pointer;
+            background: linear-gradient(45deg, #32CD32, #228B22);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            background: linear-gradient(45deg, #228B22, #006400);
+        }
+        #nameModal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        #nameForm {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        #nameInput {
+            padding: 10px;
+            font-size: 16px;
+            margin: 10px 0;
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🌵 Растения против Кактусов 🌿</h1>
+    
+    <div style="background: rgba(255,255,255,0.9); padding: 15px; border-radius: 10px; margin: 10px auto; max-width: 600px; border: 2px solid #32CD32;">
+        <p>🎯 Используйте стрелки ВВЕРХ и ВНИЗ для движения, ПРОБЕЛ для стрельбы</p>
+    </div>
+    
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+    
+    <div id="controls">
+        <button id="pauseButton">⏸️ Пауза</button>
+        <button id="newGameButton">🔄 Новая игра</button>
+    </div>
+    
+    <div id="scoreDisplay">Очки: 0</div>
+    <div id="playerNameDisplay">Игрок: Гость</div>
+
+    <!-- Модальное окно для ввода имени -->
+    <div id="nameModal">
+        <div id="nameForm">
+            <h2>Введите ваше имя</h2>
+            <input type="text" id="nameInput" placeholder="Ваше имя" maxlength="15">
+            <br>
+            <button onclick="startGame()">Начать игру</button>
+        </div>
+    </div>
+
+<script>
+// Получаем элементы
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const nameModal = document.getElementById('nameModal');
+const nameInput = document.getElementById('nameInput');
+
+// Константы игры
+const PLAYER_SPEED = 8;
+const BULLET_SPEED = 7;
+const ENEMY_SPEED_MIN = 1;
+const ENEMY_SPEED_MAX = 4;
+const SPAWN_INTERVAL = 1500;
+
+// Создаем спрайты
+function createSprite(width, height, color) {
+    const sprite = document.createElement('canvas');
+    sprite.width = width;
+    sprite.height = height;
+    const spriteCtx = sprite.getContext('2d');
+    
+    const gradient = spriteCtx.createLinearGradient(0, 0, width, height);
+    
+    if (color === 'green') {
+        gradient.addColorStop(0, '#32CD32');
+        gradient.addColorStop(1, '#228B22');
+    } else if (color === 'red') {
+        gradient.addColorStop(0, '#FF4500');
+        gradient.addColorStop(1, '#DC143C');
+    } else if (color === 'brown') {
+        gradient.addColorStop(0, '#8B4513');
+        gradient.addColorStop(1, '#A0522D');
+    }
+    
+    spriteCtx.fillStyle = gradient;
+    spriteCtx.fillRect(0, 0, width, height);
+    spriteCtx.strokeStyle = 'rgba(0,0,0,0.3)';
+    spriteCtx.lineWidth = 2;
+    spriteCtx.strokeRect(2, 2, width-4, height-4);
+    
+    return sprite;
+}
+
+const sprites = {
+    player: createSprite(50, 50, 'green'),
+    bullet: createSprite(15, 8, 'red'),
+    small_cactus: createSprite(30, 40, 'brown'),
+    medium_cactus: createSprite(50, 60, 'brown'),
+    big_cactus: createSprite(70, 80, 'brown')
+};
+
+// Класс игрока
+class Player {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.width = 50;
+        this.height = 50;
+        this.bullets = [];
+        this.lastShot = 0;
+        this.shotDelay = 300;
+    }
+
+    draw() {
+        ctx.drawImage(sprites['player'], this.x, this.y, this.width, this.height);
+        
+        ctx.fillStyle = '#FFD700';
+        ctx.beginPath();
+        ctx.arc(this.x + 35, this.y + 25, 8, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(this.x + 32, this.y + 23, 2, 0, Math.PI * 2);
+        ctx.arc(this.x + 38, this.y + 23, 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    shoot(currentTime) {
+        if (currentTime - this.lastShot > this.shotDelay) {
+            this.bullets.push({
+                x: this.x + this.width,
+                y: this.y + this.height / 2 - 4
+            });
+            this.lastShot = currentTime;
+        }
+    }
+
+    moveBullets() {
+        for (let bullet of this.bullets) {
+            bullet.x += BULLET_SPEED;
+        }
+    }
+
+    removeOutOfBoundsBullets() {
+        this.bullets = this.bullets.filter(bullet => bullet.x < canvas.width);
+    }
+
+    drawBullets() {
+        for (let bullet of this.bullets) {
+            ctx.drawImage(sprites['bullet'], bullet.x, bullet.y, 15, 8);
+        }
+    }
+
+    move(direction) {
+        switch (direction) {
+            case 'up':
+                this.y -= PLAYER_SPEED;
+                break;
+            case 'down':
+                this.y += PLAYER_SPEED;
+                break;
+        }
+        this.y = Math.max(0, Math.min(canvas.height - this.height, this.y));
+    }
+}
+
+// Класс врага
+class Enemy {
+    constructor(x, y, size, type) {
+        this.x = x;
+        this.y = y;
+        this.speed = Math.random() * (ENEMY_SPEED_MAX - ENEMY_SPEED_MIN) + ENEMY_SPEED_MIN;
+        this.size = size;
+        this.type = type;
+        this.width = size;
+        this.height = size + 10;
+    }
+
+    draw() {
+        ctx.drawImage(sprites[this.type], this.x, this.y, this.width, this.height);
+        
+        ctx.strokeStyle = '#006400';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 5; i++) {
+            const offset = i * 5;
+            ctx.beginPath();
+            ctx.moveTo(this.x + 5, this.y + offset);
+            ctx.lineTo(this.x - 5, this.y + offset);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(this.x + this.width - 5, this.y + offset);
+            ctx.lineTo(this.x + this.width + 5, this.y + offset);
+            ctx.stroke();
+        }
+    }
+
+    move() {
+        this.x -= this.speed;
+    }
+}
+
+// Основной класс игры
+class Game {
+    constructor(canvasWidth, canvasHeight) {
+        this.canvasWidth = canvasWidth;
+        this.canvasHeight = canvasHeight;
+        this.player = new Player(50, canvasHeight / 2 - 25);
+        this.enemies = [];
+        this.spawnTimer = null;
+        this.animationFrame = null;
+        this.score = 0;
+        this.gameOver = false;
+        this.isPaused = false;
+        this.playerName = 'Гость';
+    }
+
+    init() {
+        // Очищаем предыдущие таймеры
+        if (this.spawnTimer) {
+            clearInterval(this.spawnTimer);
+        }
+        if (this.animationFrame) {
+            cancelAnimationFrame(this.animationFrame);
+        }
+        
+        this.player = new Player(50, this.canvasHeight / 2 - 25);
+        this.enemies = [];
+        this.score = 0;
+        this.gameOver = false;
+        this.isPaused = false;
+        
+        document.getElementById('scoreDisplay').innerText = `Очки: ${this.score}`;
+        document.getElementById('playerNameDisplay').innerText = `Игрок: ${this.playerName}`;
+    }
+
+    start() {
+        this.init();
+        
+        this.spawnTimer = setInterval(() => {
+            if (!this.isPaused && !this.gameOver) {
+                this.spawnEnemy();
+            }
+        }, SPAWN_INTERVAL);
+
+        this.update(performance.now());
+    }
+
+    setPlayerName(name) {
+        this.playerName = name && name.trim() ? name.trim() : 'Гость';
+        document.getElementById('playerNameDisplay').innerText = `Игрок: ${this.playerName}`;
+    }
+
+    resume() {
+        this.isPaused = false;
+        document.getElementById('pauseButton').textContent = '⏸️ Пауза';
+        this.update(performance.now());
+    }
+
+    pause() {
+        this.isPaused = true;
+        document.getElementById('pauseButton').textContent = '▶️ Продолжить';
+    }
+
+    restart() {
+        // При перезапуске НЕ запрашиваем имя снова
+        this.start();
+    }
+
+    spawnEnemy() {
+        const y = Math.random() * (this.canvasHeight - 100) + 20;
+        const types = ['small_cactus', 'medium_cactus', 'big_cactus'];
+        const type = types[Math.floor(Math.random() * types.length)];
+        const sizes = { small_cactus: 30, medium_cactus: 50, big_cactus: 70 };
+        this.enemies.push(new Enemy(canvas.width, y, sizes[type], type));
+    }
+
+    update(currentTime) {
+        if (this.gameOver || this.isPaused) {
+            return;
+        }
+
+        ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
+        
+        // Рисуем фон
+        ctx.fillStyle = '#98FB98';
+        ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+        
+        // Рисуем землю
+        ctx.fillStyle = '#8FBC8F';
+        ctx.fillRect(0, this.canvasHeight - 20, this.canvasWidth, 20);
+
+        this.player.draw();
+        this.player.moveBullets();
+        this.player.removeOutOfBoundsBullets();
+        this.player.drawBullets();
+
+        // Проверка столкновений
+        for (let i = this.enemies.length - 1; i >= 0; i--) {
+            const enemy = this.enemies[i];
+            enemy.move();
+            enemy.draw();
+
+            // Проверка столкновения пуль с врагами
+            for (let j = this.player.bullets.length - 1; j >= 0; j--) {
+                const bullet = this.player.bullets[j];
+                
+                if (bullet.x < enemy.x + enemy.width &&
+                    bullet.x + 15 > enemy.x &&
+                    bullet.y < enemy.y + enemy.height &&
+                    bullet.y + 8 > enemy.y) {
+                    
+                    const points = { small_cactus: 1, medium_cactus: 2, big_cactus: 3 };
+                    this.score += points[enemy.type] || 1;
+                    
+                    this.enemies.splice(i, 1);
+                    this.player.bullets.splice(j, 1);
+                    break;
+                }
+            }
+
+            // Проверка столкновения игрока с врагом
+            if (this.player.x < enemy.x + enemy.width &&
+                this.player.x + this.player.width > enemy.x &&
+                this.player.y < enemy.y + enemy.height &&
+                this.player.y + this.player.height > enemy.y) {
+                
+                this.endGame();
+                return;
+            }
+
+            if (enemy.x < -enemy.width) {
+                this.enemies.splice(i, 1);
+            }
+        }
+
+        document.getElementById('scoreDisplay').innerText = `Очки: ${this.score}`;
+
+        this.animationFrame = requestAnimationFrame((time) => this.update(time));
+    }
+
+    endGame() {
+        this.gameOver = true;
+        clearInterval(this.spawnTimer);
+        cancelAnimationFrame(this.animationFrame);
+        
+        setTimeout(() => {
+            alert(`Игра окончена! Ваш результат: ${this.score} очков`);
+        }, 100);
+    }
+}
+
+// Глобальная переменная игры
+let game;
+
+// Функция начала игры (вызывается из модального окна)
+function startGame() {
+    const name = nameInput.value.trim();
+    game.setPlayerName(name);
+    nameModal.style.display = 'none';
+    game.start();
+}
+
+// Обработка Enter в поле ввода имени
+nameInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        startGame();
+    }
+});
+
+window.onload = function() {
+    game = new Game(canvas.width, canvas.height);
+    
+    // Показываем модальное окно при загрузке
+    nameModal.style.display = 'flex';
+    nameInput.focus();
+
+    // Обработчик событий клавиатуры
+    document.addEventListener('keydown', function(event) {
+        if (game.gameOver || game.isPaused) return;
+        
+        switch(event.key) {
+            case 'ArrowUp':
+                game.player.move('up');
+                break;
+            case 'ArrowDown':
+                game.player.move('down');
+                break;
+            case ' ':
+                event.preventDefault();
+                game.player.shoot(performance.now());
+                break;
+        }
+    });
+
+    // Обработчики кнопок
+    document.getElementById('pauseButton').addEventListener('click', function() {
+        if (game.gameOver) return;
+        
+        if (game.isPaused) {
+            game.resume();
+        } else {
+            game.pause();
+        }
+    });
+
+    document.getElementById('newGameButton').addEventListener('click', function() {
+        // При новой игре просто перезапускаем, не запрашивая имя
+        game.restart();
+    });
+};
+</script>
+</body>
+</html>
