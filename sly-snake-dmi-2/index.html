@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Хитрый Змей Дми 2</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #0b0f14;
+      color: #e6edf3;
+      font-family: system-ui, sans-serif;
+    }
+    h1 { margin: 10px 0 4px; font-size: 28px; }
+    .hud { margin-bottom: 8px; font-size: 18px; }
+    canvas {
+      border: 2px solid #30363d;
+      border-radius: 8px;
+      background: #111;
+      box-shadow: 0 0 30px rgba(46, 204, 113, 0.15);
+    }
+    p {
+      margin-top: 10px;
+      color: #8b949e;
+      font-size: 14px;
+      text-align: center;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <h1>Хитрый Змей Дми 2</h1>
+  <div class="hud">
+    Счёт: <span id="score">0</span> |
+    Уровень: <span id="level">1</span> |
+    Яблок: <span id="apples">0</span>
+  </div>
+  <canvas id="game" width="480" height="480"></canvas>
+  <p>
+    Управление: стрелки / WASD. Пробел — пауза. R — заново.<br>
+    Красное яблоко — еда. Фиолетовое с «?» — ловушка.
+  </p>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const CELL = 24;
+    const COLS = canvas.width / CELL;
+    const ROWS = canvas.height / CELL;
+
+    let snake, dir, nextDir, food, fakeFood;
+    let score, level, apples, speed;
+    let paused, gameOver, gameOverMsg, timer;
+
+    function init() {
+      snake = [
+        { x: 5, y: 10 },
+        { x: 4, y: 10 },
+        { x: 3, y: 10 }
+      ];
+      dir = { x: 1, y: 0 };
+      nextDir = { x: 1, y: 0 };
+      score = 0;
+      level = 1;
+      apples = 0;
+      speed = 150;
+      paused = false;
+      gameOver = false;
+      gameOverMsg = '';
+      food = randomFreeCell();
+      fakeFood = null;
+      updateHUD();
+      draw();
+      clearTimeout(timer);
+      loop();
+    }
+
+    function loop() {
+      clearTimeout(timer);
+      if (!paused && !gameOver) {
+        tick();
+      }
+      timer = setTimeout(loop, speed);
+    }
+
+    function tick() {
+      dir = nextDir;
+      const head = snake[0];
+      const newHead = { x: head.x + dir.x, y: head.y + dir.y };
+
+      // Стены
+      if (newHead.x < 0 || newHead.x >= COLS || newHead.y < 0 || newHead.y >= ROWS) {
+        return endGame('Ты врезался в стену!');
+      }
+
+      // Себя
+      if (snake.some(s => s.x === newHead.x && s.y === newHead.y)) {
+        return endGame('Ты укусил себя!');
+      }
+
+      // Ловушка
+      if (fakeFood && newHead.x === fakeFood.x && newHead.y === fakeFood.y) {
+        return endGame('Хитрый змей съел поддельное яблоко!');
+      }
+
+      if (newHead.x === food.x && newHead.y === food.y) {
+        snake.unshift(newHead);
+        score += 10 * level;
+        apples++;
+
+        if (apples % 5 === 0) {
+          level++;
+          speed = Math.max(70, 150 - (level - 1) * 10);
+          fakeFood = randomFreeCell();
+        }
+
+        food = randomFreeCell();
+        updateHUD();
+      } else {
+        snake.unshift(newHead);
+        snake.pop();
+      }
+
+      draw();
+    }
+
+    function endGame(msg) {
+      gameOver = true;
+      gameOverMsg = msg;
+      draw();
+    }
+
+    function randomFreeCell() {
+      for (let i = 0; i < 1000; i++) {
+        const cell = {
+          x: Math.floor(Math.random() * COLS),
+          y: Math.floor(Math.random() * ROWS)
+        };
+        if (snake.some(s => s.x === cell.x && s.y === cell.y)) continue;
+        if (food && food.x === cell.x && food.y === cell.y) continue;
+        if (fakeFood && fakeFood.x === cell.x && fakeFood.y === cell.y) continue;
+        return cell;
+      }
+
+      for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+          if (snake.some(s => s.x === x && s.y === y)) continue;
+          if (food && food.x === x && food.y === y) continue;
+          if (fakeFood && fakeFood.x === x && fakeFood.y === y) continue;
+          return { x, y };
+        }
+      }
+
+      return { x: 0, y: 0 };
+    }
+
+    function draw() {
+      // Фон
+      ctx.fillStyle = '#111';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Сетка
+      ctx.strokeStyle = '#222';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= COLS; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * CELL, 0);
+        ctx.lineTo(i * CELL, canvas.height);
+        ctx.stroke();
+      }
+      for (let i = 0; i <= ROWS; i++) {
+        ctx.beginPath();
+        ctx.moveTo(0, i * CELL);
+        ctx.lineTo(canvas.width, i * CELL);
+        ctx.stroke();
+      }
+
+      // Еда
+      drawCircleCell(food.x, food.y, '#e74c3c');
+
+      // Ловушка
+      if (fakeFood) {
+        drawCircleCell(fakeFood.x, fakeFood.y, '#9b59b6', '?');
+      }
+
+      // Змей
+      snake.forEach((seg, i) => {
+        const color = i === 0 ? '#2ecc71' : '#27ae60';
+        ctx.fillStyle = color;
+        ctx.fillRect(seg.x * CELL + 2, seg.y * CELL + 2, CELL - 4, CELL - 4);
+      });
+
+      // Глаза
+      const head = snake[0];
+      ctx.fillStyle = '#0b0f14';
+      const hx = head.x * CELL;
+      const hy = head.y * CELL;
+      if (dir.x === 1) {
+        ctx.fillRect(hx + 15, hy + 6, 3, 3);
+        ctx.fillRect(hx + 15, hy + 15, 3, 3);
+      } else if (dir.x === -1) {
+        ctx.fillRect(hx + 6, hy + 6, 3, 3);
+        ctx.fillRect(hx + 6, hy + 15, 3, 3);
+      } else if (dir.y === 1) {
+        ctx.fillRect(hx + 6, hy + 15, 3, 3);
+        ctx.fillRect(hx + 15, hy + 15, 3, 3);
+      } else {
+        ctx.fillRect(hx + 6, hy + 6, 3, 3);
+        ctx.fillRect(hx + 15, hy + 6, 3, 3);
+      }
+
+      // Оверлеи
+      if (paused) overlay('Пауза');
+      if (gameOver) overlay(gameOverMsg + '\nНажми R');
+    }
+
+    function drawCircleCell(x, y, color, text = '') {
+      const px = x * CELL;
+      const py = y * CELL;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(px + CELL / 2, py + CELL / 2, CELL / 2 - 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (text) {
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, px + CELL / 2, py + CELL / 2);
+      }
+    }
+
+    function overlay(text) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 24px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const lines = text.split('\n');
+      lines.forEach((line, i) => {
+        ctx.fillText(
+          line,
+          canvas.width / 2,
+          canvas.height / 2 + (i - (lines.length - 1) / 2) * 32
+        );
+      });
+    }
+
+    function updateHUD() {
+      document.getElementById('score').textContent = score;
+      document.getElementById('level').textContent = level;
+      document.getElementById('apples').textContent = apples;
+    }
+
+    document.addEventListener('keydown', (e) => {
+      const key = e.key.toLowerCase();
+
+      if (key === 'r') {
+        init();
+        return;
+      }
+
+      if (key === ' ') {
+        e.preventDefault();
+        if (!gameOver) {
+          paused = !paused;
+          draw();
+        }
+        return;
+      }
+
+      if (paused || gameOver) return;
+
+      let newDir = null;
+      if (key === 'arrowup' || key === 'w') newDir = { x: 0, y: -1 };
+      if (key === 'arrowdown' || key === 's') newDir = { x: 0, y: 1 };
+      if (key === 'arrowleft' || key === 'a') newDir = { x: -1, y: 0 };
+      if (key === 'arrowright' || key === 'd') newDir = { x: 1, y: 0 };
+      if (!newDir) return;
+
+      // Нельзя развернуться на 180°
+      if (newDir.x === -dir.x && newDir.y === -dir.y) return;
+      nextDir = newDir;
+    });
+
+    init();
+  </script>
+</body>
+</html>
