@@ -1,6 +1,12 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const restartBtn = document.getElementById('restart-btn');
+const pauseBtn = document.getElementById('pause-btn');
+const pauseMenu = document.getElementById('pause-menu');
+
+const btnResume = document.getElementById('btn-resume');
+const btnRestart = document.getElementById('btn-restart');
+const btnQuit = document.getElementById('btn-quit');
 
 const CELL = 24; 
 let COLS = canvas.width / CELL;
@@ -15,7 +21,6 @@ let paused, gameOver, gameOverMsg, timer;
 let currentPlayer = null;
 let isTrainingMode = false; 
 
-// --- СИСТЕМА ЧАСТИЦ (САЛЮТ) ---
 let particles = [];
 let celebrationText = '';
 let celebrationTimer = 0;
@@ -25,12 +30,9 @@ function createParticles() {
     const colors = ['#e74c3c', '#f1c40f', '#2ecc71', '#3498db', '#9b59b6'];
     for (let i = 0; i < 60; i++) {
         particles.push({
-            x: canvas.width / 2,
-            y: canvas.height / 2,
-            vx: (Math.random() - 0.5) * 20,
-            vy: (Math.random() - 0.5) * 20,
-            life: 1, 
-            color: colors[Math.floor(Math.random() * colors.length)],
+            x: canvas.width / 2, y: canvas.height / 2,
+            vx: (Math.random() - 0.5) * 20, vy: (Math.random() - 0.5) * 20,
+            life: 1, color: colors[Math.floor(Math.random() * colors.length)],
             size: Math.random() * 8 + 4
         });
     }
@@ -39,38 +41,28 @@ function createParticles() {
 function updateParticles() {
     for (let i = particles.length - 1; i >= 0; i--) {
         let p = particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += 0.3; 
-        p.life -= 0.02;
+        p.x += p.vx; p.y += p.vy; p.vy += 0.3; p.life -= 0.02;
         if (p.life <= 0) particles.splice(i, 1);
     }
 }
 
 function drawParticles() {
     particles.forEach(p => {
-        ctx.globalAlpha = p.life;
-        ctx.fillStyle = p.color;
-        ctx.fillRect(p.x, p.y, p.size, p.size);
-        ctx.globalAlpha = 1;
+        ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
+        ctx.fillRect(p.x, p.y, p.size, p.size); ctx.globalAlpha = 1;
     });
 }
 
-// --- АДАПТАЦИЯ ПОД МОБИЛКИ ---
 function resizeCanvas() {
     const size = Math.min(window.innerWidth * 0.95, window.innerHeight * 0.65);
-    canvas.width = size;
-    canvas.height = size;
-    COLS = Math.floor(canvas.width / CELL);
-    ROWS = Math.floor(canvas.height / CELL);
+    canvas.width = size; canvas.height = size;
+    COLS = Math.floor(canvas.width / CELL); ROWS = Math.floor(canvas.height / CELL);
     if (snake) draw();
 }
 window.addEventListener('resize', resizeCanvas);
 
-// --- УПРАВЛЕНИЕ СВАЙПАМИ ---
-let touchStartX = 0;
-let touchStartY = 0;
-
+// Управление свайпами
+let touchStartX = 0, touchStartY = 0;
 window.addEventListener('touchstart', e => {
     touchStartX = e.changedTouches[0].screenX;
     touchStartY = e.changedTouches[0].screenY;
@@ -78,7 +70,6 @@ window.addEventListener('touchstart', e => {
 
 window.addEventListener('touchend', e => {
     if (paused || gameOver || !currentPlayer) return;
-    
     let touchEndX = e.changedTouches[0].screenX;
     let touchEndY = e.changedTouches[0].screenY;
     let diffX = touchEndX - touchStartX;
@@ -92,11 +83,10 @@ window.addEventListener('touchend', e => {
         if (diffY > 30 && dir.y === 0) newDir = { x: 0, y: 1 };
         else if (diffY < -30 && dir.y === 0) newDir = { x: 0, y: -1 };
     }
-
     if (newDir) nextDir = newDir;
 });
 
-// --- СТАТИСТИКА ---
+// Статистика
 function loadStats() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -106,30 +96,21 @@ function loadStats() {
     return data;
   } catch (e) { return { players: {} }; }
 }
-
-function saveStats(data) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) {}
-}
-
+function saveStats(data) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) {} }
 function getPlayerStats(name) {
   const stats = loadStats();
   return stats.players[name] || { bestScore: 0, bestLevel: 1, games: 0, totalApples: 0, lastPlayed: 0 };
 }
-
 function saveGameResult() {
   if (!currentPlayer) return { newRecord: false };
   const stats = loadStats();
   const p = stats.players[currentPlayer] || { bestScore: 0, bestLevel: 1, games: 0, totalApples: 0, lastPlayed: 0 };
-
-  p.games++;
-  p.totalApples += apples;
+  p.games++; p.totalApples += apples;
   const newRecord = score > p.bestScore;
   if (newRecord) p.bestScore = score;
   if (level > p.bestLevel) p.bestLevel = level;
   p.lastPlayed = Date.now();
-
-  stats.players[currentPlayer] = p;
-  saveStats(stats);
+  stats.players[currentPlayer] = p; saveStats(stats);
   return { newRecord };
 }
 
@@ -143,7 +124,6 @@ function renderLeaderboard(highlightName) {
     box.innerHTML = '<h3>Таблица лидеров</h3><div class="empty">Пока пусто. Стань первым!</div>';
     return;
   }
-
   let html = '<h3>Таблица лидеров</h3><table><tr><th>#</th><th>Имя</th><th>Рекорд</th><th>Игр</th></tr>';
   list.forEach((p, i) => {
     const cls = (p.name === highlightName) ? ' class="current"' : '';
@@ -165,13 +145,16 @@ function showNameScreen() {
 
   const last = localStorage.getItem(LAST_PLAYER_KEY) || '';
   input.value = last;
-  
   const disable = last.trim().length === 0;
   startBtn.disabled = disable;
   trainBtn.disabled = disable;
 
   renderLeaderboard(last);
   screen.classList.remove('hidden');
+  
+  pauseMenu.classList.add('hidden'); 
+  pauseBtn.classList.add('hidden');
+  
   setTimeout(() => input.focus(), 50);
 }
 
@@ -191,37 +174,22 @@ function startWithPlayer(name, trainingMode = false) {
   init();
 }
 
-// --- ИГРА ---
 function init() {
   resizeCanvas();
   restartBtn.classList.add('hidden'); 
-  particles = []; 
-  celebrationTimer = 0;
-  nextCelebrationScore = 100; 
+  pauseMenu.classList.add('hidden');
+  pauseBtn.classList.remove('hidden'); // Показываем кнопку паузы при старте
   
-  const startX = Math.floor(COLS / 2);
-  const startY = Math.floor(ROWS / 2);
+  particles = []; celebrationTimer = 0; nextCelebrationScore = 100; 
   
-  snake = [
-    { x: startX, y: startY },
-    { x: startX - 1, y: startY },
-    { x: startX - 2, y: startY }
-  ];
-  dir = { x: 1, y: 0 };
-  nextDir = { x: 1, y: 0 };
-  score = 0;
-  level = 1;
-  apples = 0;
-  
+  const startX = Math.floor(COLS / 2); const startY = Math.floor(ROWS / 2);
+  snake = [{ x: startX, y: startY }, { x: startX - 1, y: startY }, { x: startX - 2, y: startY }];
+  dir = { x: 1, y: 0 }; nextDir = { x: 1, y: 0 };
+  score = 0; level = 1; apples = 0;
   speed = isTrainingMode ? 200 : 150; 
-  
-  paused = false;
-  gameOver = false;
-  gameOverMsg = '';
-  food = randomFreeCell();
-  fakeFood = null;
-  updateHUD();
-  draw();
+  paused = false; gameOver = false; gameOverMsg = '';
+  food = randomFreeCell(); fakeFood = null;
+  updateHUD(); draw();
   
   clearTimeout(timer);
   timer = setTimeout(loop, speed);
@@ -231,12 +199,8 @@ function loop() {
   if (particles.length > 0) updateParticles(); 
   if (celebrationTimer > 0) celebrationTimer--; 
   
-  if (!paused && !gameOver) {
-      tick();
-  } else {
-      draw();
-      timer = setTimeout(loop, 30);
-  }
+  if (!paused && !gameOver) { tick(); } 
+  else { draw(); timer = setTimeout(loop, 30); }
 }
 
 function tick() {
@@ -244,15 +208,9 @@ function tick() {
   const head = snake[0];
   const newHead = { x: head.x + dir.x, y: head.y + dir.y };
 
-  if (newHead.x < 0 || newHead.x >= COLS || newHead.y < 0 || newHead.y >= ROWS) {
-    return endGame('Ты врезался в стену!');
-  }
-  if (snake.some(s => s.x === newHead.x && s.y === newHead.y)) {
-    return endGame('Ты укусил себя!');
-  }
-  if (fakeFood && newHead.x === fakeFood.x && newHead.y === fakeFood.y) {
-    return endGame('Хитрый змей съел поддельное яблоко!');
-  }
+  if (newHead.x < 0 || newHead.x >= COLS || newHead.y < 0 || newHead.y >= ROWS) return endGame('Ты врезался в стену!');
+  if (snake.some(s => s.x === newHead.x && s.y === newHead.y)) return endGame('Ты укусил себя!');
+  if (fakeFood && newHead.x === fakeFood.x && newHead.y === fakeFood.y) return endGame('Хитрый змей съел поддельное яблоко!');
 
   if (newHead.x === food.x && newHead.y === food.y) {
     snake.unshift(newHead);
@@ -265,24 +223,15 @@ function tick() {
         celebrationTimer = 100; 
         nextCelebrationScore += 100; 
     }
-    
     if (!isTrainingMode && apples % 5 === 0) {
-      level++;
-      speed = Math.max(70, 150 - (level - 1) * 10);
-      fakeFood = randomFreeCell();
+      level++; speed = Math.max(70, 150 - (level - 1) * 10); fakeFood = randomFreeCell();
     }
-    
-    food = randomFreeCell();
-    updateHUD();
+    food = randomFreeCell(); updateHUD();
   } else {
-    snake.unshift(newHead);
-    snake.pop();
+    snake.unshift(newHead); snake.pop();
   }
-
   draw();
-  
-  clearTimeout(timer);
-  timer = setTimeout(loop, speed);
+  clearTimeout(timer); timer = setTimeout(loop, speed);
 }
 
 function endGame(msg) {
@@ -294,21 +243,9 @@ function endGame(msg) {
   const p = getPlayerStats(currentPlayer);
   document.getElementById('bestScore').textContent = p.bestScore;
   
+  pauseBtn.classList.add('hidden'); // Прячем кнопку паузы
   restartBtn.classList.remove('hidden');
-  
-  // Рисуем финальный экран
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 24px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  
-  const lines = gameOverMsg.split('\n');
-  lines.forEach((line, i) => {
-    // Сдвигаем текст выше (на 40 пикселей от центра), чтобы он не перекрывался с кнопкой
-    ctx.fillText(line, canvas.width / 2, canvas.height / 2 - 40 + i * 32); 
-  });
+  draw(); 
 }
 
 function randomFreeCell() {
@@ -322,19 +259,11 @@ function randomFreeCell() {
   return { x: 0, y: 0 };
 }
 
-// --- ОТРИСОВКА ---
 function draw() {
-  ctx.fillStyle = '#111';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  ctx.strokeStyle = '#222';
-  ctx.lineWidth = 1;
-  for (let i = 0; i <= COLS; i++) {
-    ctx.beginPath(); ctx.moveTo(i * CELL, 0); ctx.lineTo(i * CELL, canvas.height); ctx.stroke();
-  }
-  for (let i = 0; i <= ROWS; i++) {
-    ctx.beginPath(); ctx.moveTo(0, i * CELL); ctx.lineTo(canvas.width, i * CELL); ctx.stroke();
-  }
+  ctx.fillStyle = '#111'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = '#222'; ctx.lineWidth = 1;
+  for (let i = 0; i <= COLS; i++) { ctx.beginPath(); ctx.moveTo(i * CELL, 0); ctx.lineTo(i * CELL, canvas.height); ctx.stroke(); }
+  for (let i = 0; i <= ROWS; i++) { ctx.beginPath(); ctx.moveTo(0, i * CELL); ctx.lineTo(canvas.width, i * CELL); ctx.stroke(); }
 
   drawCircleCell(food.x, food.y, '#e74c3c');
   if (fakeFood) drawCircleCell(fakeFood.x, fakeFood.y, '#9b59b6', '?');
@@ -350,54 +279,34 @@ function draw() {
 
   if (celebrationTimer > 0) {
     ctx.fillStyle = `rgba(241, 196, 15, ${celebrationTimer / 100})`; 
-    ctx.font = 'bold 36px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.shadowColor = 'rgba(0,0,0,0.8)';
-    ctx.shadowBlur = 10;
+    ctx.font = 'bold 36px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 10;
     ctx.fillText(celebrationText, canvas.width / 2, canvas.height / 2);
     ctx.shadowBlur = 0; 
   }
 
-  if (paused) overlay('Пауза');
+  if (paused && !gameOver) overlay('Пауза');
   
   if (gameOver) {
-      // Если игра окончена, рисуем оверлей (текст уже нарисован в endGame, но перерисовываем для надежности)
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 24px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.65)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 24px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       const lines = gameOverMsg.split('\n');
-      lines.forEach((line, i) => {
-        ctx.fillText(line, canvas.width / 2, canvas.height / 2 - 40 + i * 32);
-      });
+      lines.forEach((line, i) => { ctx.fillText(line, canvas.width / 2, canvas.height / 2 - 40 + i * 32); });
   }
 }
 
 function drawSnakeFace(head, dir) {
-  const cx = head.x * CELL + CELL / 2;
-  const cy = head.y * CELL + CELL / 2;
+  const cx = head.x * CELL + CELL / 2; const cy = head.y * CELL + CELL / 2;
   const off = 5, fwd = 5, eyeR = 3.5, pupilR = 1.8;
-
   let e1x, e1y, e2x, e2y;
   if (dir.x === 1)       { e1x = cx + fwd; e1y = cy - off; e2x = cx + fwd; e2y = cy + off; }
   else if (dir.x === -1) { e1x = cx - fwd; e1y = cy - off; e2x = cx - fwd; e2y = cy + off; }
   else if (dir.y === 1)  { e1x = cx - off; e1y = cy + fwd; e2x = cx + off; e2y = cy + fwd; }
   else                   { e1x = cx - off; e1y = cy - fwd; e2x = cx + off; e2y = cy - fwd; }
 
-  ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.arc(e1x, e1y, eyeR, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(e2x, e2y, eyeR, 0, Math.PI * 2); ctx.fill();
-
-  ctx.fillStyle = '#000';
-  ctx.beginPath(); ctx.arc(e1x, e1y, pupilR, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(e2x, e2y, pupilR, 0, Math.PI * 2); ctx.fill();
-
-  ctx.strokeStyle = '#ff3b6b';
-  ctx.lineWidth = 1.8;
-  ctx.lineCap = 'round';
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(e1x, e1y, eyeR, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(e2x, e2y, eyeR, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(e1x, e1y, pupilR, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.arc(e2x, e2y, pupilR, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#ff3b6b'; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
 
   let tx, ty, dx = 0, dy = 0;
   if (dir.x === 1)       { tx = cx + 10; ty = cy; dx = 1;  dy = 0; }
@@ -408,42 +317,24 @@ function drawSnakeFace(head, dir) {
   const tLen = 5, tSpred = 3;
   ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx + dx * tLen, ty + dy * tLen); ctx.stroke();
   const bx = tx + dx * tLen, by = ty + dy * tLen;
-  ctx.beginPath();
-  ctx.moveTo(bx, by);
-  ctx.lineTo(bx - dy * tSpred + dx * tSpred, by + dx * tSpred + dy * tSpred);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(bx, by);
-  ctx.lineTo(bx + dy * tSpred + dx * tSpred, by - dx * tSpred + dy * tSpred);
-  ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx - dy * tSpred + dx * tSpred, by + dx * tSpred + dy * tSpred); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + dy * tSpred + dx * tSpred, by - dx * tSpred + dy * tSpred); ctx.stroke();
 }
 
 function drawCircleCell(x, y, color, text = '') {
   const px = x * CELL, py = y * CELL;
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.arc(px + CELL / 2, py + CELL / 2, CELL / 2 - 3, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.fillStyle = color; ctx.beginPath(); ctx.arc(px + CELL / 2, py + CELL / 2, CELL / 2 - 3, 0, Math.PI * 2); ctx.fill();
   if (text) {
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 14px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(text, px + CELL / 2, py + CELL / 2);
   }
 }
 
 function overlay(text) {
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 24px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.4)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 24px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const lines = text.split('\n');
-  lines.forEach((line, i) => {
-    ctx.fillText(line, canvas.width / 2, canvas.height / 2 + (i - (lines.length - 1) / 2) * 32);
-  });
+  lines.forEach((line, i) => { ctx.fillText(line, canvas.width / 2, canvas.height / 2 + (i - (lines.length - 1) / 2) * 32); });
 }
 
 function updateHUD() {
@@ -456,17 +347,11 @@ function updateHUD() {
 document.addEventListener('keydown', (e) => {
   const key = e.key.toLowerCase();
 
-  if (key === 'p') {
-    clearTimeout(timer);
-    gameOver = true; paused = true;
-    restartBtn.classList.add('hidden');
-    showNameScreen();
-    return;
-  }
+  if (key === 'p') { clearTimeout(timer); gameOver = true; paused = true; pauseBtn.classList.add('hidden'); showNameScreen(); return; }
   if (key === 'r') { if (currentPlayer) init(); return; }
   if (key === ' ') {
     e.preventDefault();
-    if (!gameOver && currentPlayer) { paused = !paused; draw(); }
+    if (!gameOver && currentPlayer) { togglePause(); }
     return;
   }
   if (paused || gameOver || !currentPlayer) return;
@@ -480,6 +365,38 @@ document.addEventListener('keydown', (e) => {
 
   if (newDir.x === -dir.x && newDir.y === -dir.y) return;
   nextDir = newDir;
+});
+
+// --- ОБРАБОТЧИКИ НОВЫХ КНОПОК ---
+
+function togglePause() {
+    if (gameOver || !currentPlayer) return;
+    paused = !paused;
+    if (paused) {
+        pauseMenu.classList.remove('hidden');
+        pauseBtn.textContent = '▶';
+    } else {
+        pauseMenu.classList.add('hidden');
+        pauseBtn.textContent = '⏸';
+        loop(); // Возобновляем цикл
+    }
+}
+
+pauseBtn.addEventListener('click', togglePause);
+
+btnResume.addEventListener('click', () => {
+    togglePause();
+});
+
+btnRestart.addEventListener('click', () => {
+    init();
+});
+
+btnQuit.addEventListener('click', () => {
+    clearTimeout(timer);
+    gameOver = true; // Останавливаем игру
+    paused = false;
+    showNameScreen();
 });
 
 restartBtn.addEventListener('click', () => {
@@ -498,9 +415,7 @@ restartBtn.addEventListener('click', () => {
   });
   
   input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !startBtn.disabled) {
-      startWithPlayer(input.value, false);
-    }
+    if (e.key === 'Enter' && !startBtn.disabled) startWithPlayer(input.value, false);
   });
   
   startBtn.addEventListener('click', () => startWithPlayer(input.value, false));

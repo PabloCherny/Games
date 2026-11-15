@@ -57,12 +57,7 @@
     }
     .screen input:focus { border-color: #2ecc71; }
     
-    /* Кнопки на экране входа */
-    .buttons-row {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 20px;
-    }
+    .buttons-row { display: flex; gap: 10px; margin-bottom: 20px; }
     .screen button {
       color: #0b0f14; border: none;
       padding: 12px 24px; border-radius: 8px; font-size: 16px;
@@ -84,10 +79,52 @@
     .leaderboard tr.current td { background: rgba(46, 204, 113, 0.08); }
     .leaderboard .empty { text-align: center; color: #484f58; font-style: italic; }
 
-    /* --- Кнопка перезапуска (сдвинута ниже) --- */
+    /* --- Кнопка паузы в углу --- */
+    #pause-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(48, 54, 61, 0.8);
+      color: #e6edf3;
+      border: 1px solid #8b949e;
+      border-radius: 5px;
+      padding: 5px 10px;
+      font-size: 20px;
+      cursor: pointer;
+      z-index: 50;
+    }
+    #pause-btn:hover { background: rgba(139, 148, 158, 0.5); }
+
+    /* --- Меню паузы --- */
+    #pause-menu {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      background: #161b22;
+      border: 2px solid #30363d;
+      padding: 20px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 100;
+      box-shadow: 0 0 20px rgba(0,0,0,0.8);
+      text-align: center;
+    }
+    #pause-menu.hidden { display: none; }
+    #pause-menu h3 { margin-bottom: 10px; color: #f1c40f; }
+    #pause-menu button {
+      padding: 10px 20px; font-size: 16px; border-radius: 6px; cursor: pointer; border: none;
+      font-weight: bold;
+    }
+    #btn-resume { background: #2ecc71; color: #0b0f14; }
+    #btn-restart { background: #f1c40f; color: #0b0f14; }
+    #btn-quit { background: #e74c3c; color: #fff; }
+
+    /* --- Кнопка перезапуска (Game Over) --- */
     #restart-btn {
       position: absolute;
-      top: 65%; /* <--- Сдвинули ниже */
+      top: 65%;
       left: 50%;
       transform: translate(-50%, -50%);
       background: #2ecc71;
@@ -118,6 +155,19 @@
 
   <div class="canvas-wrapper">
     <canvas id="game" width="480" height="480"></canvas>
+    
+    <!-- Кнопка паузы -->
+    <button id="pause-btn" class="hidden">⏸</button>
+
+    <!-- Меню паузы -->
+    <div id="pause-menu" class="hidden">
+      <h3>Пауза</h3>
+      <button id="btn-resume">Продолжить</button>
+      <button id="btn-restart">Заново</button>
+      <button id="btn-quit">Выйти в меню</button>
+    </div>
+
+    <!-- Кнопка перезапуска при Game Over -->
     <button id="restart-btn" class="hidden">Играть снова</button>
   </div>
 
