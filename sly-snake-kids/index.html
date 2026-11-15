@@ -41,17 +41,29 @@
     }
     .screen input:focus { border-color: #2ecc71; }
     
-    .buttons-row { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center;}
+    /* Общий контейнер для кнопок */
+    .buttons-row { 
+      display: flex; 
+      gap: 10px; 
+      margin-bottom: 20px; 
+      flex-wrap: wrap; /* Разрешаем перенос на новую строку, если не влезают */
+      justify-content: center;
+      max-width: 340px;
+    }
+    
     .screen button {
-      color: #0b0f14; border: none; padding: 12px 24px; border-radius: 8px;
-      font-size: 16px; font-weight: 700; cursor: pointer; transition: background .15s;
+      color: #0b0f14; border: none; padding: 12px 20px; border-radius: 8px;
+      font-size: 15px; font-weight: 700; cursor: pointer; transition: background .15s;
+      flex: 1; /* Кнопки растягиваются равномерно */
+      min-width: 100px; /* Минимальная ширина, чтобы текст влезал */
     }
     .btn-play { background: #2ecc71; }
     .btn-play:hover { background: #27ae60; }
     .btn-train { background: #f1c40f; }
     .btn-train:hover { background: #d4ac0d; }
-    .btn-resume-main { background: #3498db; color: #fff; width: 100%; margin-bottom: 10px; } /* Кнопка возврата */
+    .btn-resume-main { background: #3498db; color: #fff; }
     .btn-resume-main:hover { background: #2980b9; }
+    
     .screen button:disabled { background: #30363d; color: #8b949e; cursor: not-allowed; }
 
     .leaderboard { margin-top: 10px; width: 340px; max-width: 100%; }
@@ -96,6 +108,9 @@
     }
     #restart-btn:hover { background: #27ae60; }
     #restart-btn.hidden { display: none; }
+    
+    /* Скрываем кнопку, если у нее есть класс hidden */
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
@@ -131,15 +146,15 @@
 
   <div class="screen" id="nameScreen">
     <h2>🐍 Как тебя зовут?</h2>
-    
-    <!-- Кнопка возврата в игру (появляется только если игра была прервана) -->
-    <button id="resumeGameBtn" class="btn-resume-main hidden">▶ Продолжить прошлую игру</button>
-
     <input id="playerInput" maxlength="16" placeholder="Игрок" autocomplete="off">
+    
+    <!-- Все кнопки теперь в одном ряду (flex-wrap) -->
     <div class="buttons-row">
+      <button id="resumeGameBtn" class="btn-resume-main hidden">▶ Продолжить</button>
       <button id="startBtn" class="btn-play" disabled>Играть</button>
       <button id="trainBtn" class="btn-train" disabled>Тренировка 🐢</button>
     </div>
+
     <div class="leaderboard" id="leaderboard"></div>
   </div>
 
