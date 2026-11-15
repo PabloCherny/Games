@@ -1,6 +1,8 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-const CELL = 24; // Размер клетки
+const restartBtn = document.getElementById('restart-btn'); // Кнопка перезапуска
+
+const CELL = 24; 
 let COLS = canvas.width / CELL;
 let ROWS = canvas.height / CELL;
 
@@ -14,14 +16,11 @@ let currentPlayer = null;
 
 // --- АДАПТАЦИЯ ПОД МОБИЛКИ ---
 function resizeCanvas() {
-    // Берем минимальную сторону (ширину или высоту), чтобы поле было квадратным
     const size = Math.min(window.innerWidth * 0.95, window.innerHeight * 0.65);
     canvas.width = size;
     canvas.height = size;
-    // Пересчитываем сетку (чтобы клетки оставались ровными)
     COLS = Math.floor(canvas.width / CELL);
     ROWS = Math.floor(canvas.height / CELL);
-    // Если игра запущена, перерисовываем
     if (snake) draw();
 }
 window.addEventListener('resize', resizeCanvas);
@@ -44,13 +43,12 @@ window.addEventListener('touchend', e => {
     let diffY = touchEndY - touchStartY;
     let newDir = null;
 
-    // Определяем направление свайпа (порог 30 пикселей)
     if (Math.abs(diffX) > Math.abs(diffY)) {
-        if (diffX > 30 && dir.x === 0) newDir = { x: 1, y: 0 }; // Вправо
-        else if (diffX < -30 && dir.x === 0) newDir = { x: -1, y: 0 }; // Влево
+        if (diffX > 30 && dir.x === 0) newDir = { x: 1, y: 0 };
+        else if (diffX < -30 && dir.x === 0) newDir = { x: -1, y: 0 };
     } else {
-        if (diffY > 30 && dir.y === 0) newDir = { x: 0, y: 1 }; // Вниз
-        else if (diffY < -30 && dir.y === 0) newDir = { x: 0, y: -1 }; // Вверх
+        if (diffY > 30 && dir.y === 0) newDir = { x: 0, y: 1 };
+        else if (diffY < -30 && dir.y === 0) newDir = { x: 0, y: -1 };
     }
 
     if (newDir) nextDir = newDir;
@@ -148,9 +146,9 @@ function startWithPlayer(name) {
 
 // --- ИГРА ---
 function init() {
-  resizeCanvas(); // Подгоняем размер при старте
+  resizeCanvas();
+  restartBtn.classList.add('hidden'); // Прячем кнопку при старте
   
-  // Начинаем с центра экрана
   const startX = Math.floor(COLS / 2);
   const startY = Math.floor(ROWS / 2);
   
@@ -223,6 +221,8 @@ function endGame(msg) {
   
   const p = getPlayerStats(currentPlayer);
   document.getElementById('bestScore').textContent = p.bestScore;
+  
+  restartBtn.classList.remove('hidden'); // Показываем кнопку
   draw();
 }
 
@@ -237,12 +237,11 @@ function randomFreeCell() {
   return { x: 0, y: 0 };
 }
 
-// --- ОТРИСОВКА (Взята из оригинала) ---
+// --- ОТРИСОВКА ---
 function draw() {
   ctx.fillStyle = '#111';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Сетка
   ctx.strokeStyle = '#222';
   ctx.lineWidth = 1;
   for (let i = 0; i <= COLS; i++) {
@@ -252,17 +251,14 @@ function draw() {
     ctx.beginPath(); ctx.moveTo(0, i * CELL); ctx.lineTo(canvas.width, i * CELL); ctx.stroke();
   }
 
-  // Яблоки
   drawCircleCell(food.x, food.y, '#e74c3c');
   if (fakeFood) drawCircleCell(fakeFood.x, fakeFood.y, '#9b59b6', '?');
 
-  // Змейка
   snake.forEach((seg, i) => {
     ctx.fillStyle = i === 0 ? '#2ecc71' : '#27ae60';
     ctx.fillRect(seg.x * CELL + 2, seg.y * CELL + 2, CELL - 4, CELL - 4);
   });
 
-  // Мордочка
   drawSnakeFace(snake[0], dir);
 
   if (paused) overlay('Пауза');
@@ -280,7 +276,6 @@ function drawSnakeFace(head, dir) {
   else if (dir.y === 1)  { e1x = cx - off; e1y = cy + fwd; e2x = cx + off; e2y = cy + fwd; }
   else                   { e1x = cx - off; e1y = cy - fwd; e2x = cx + off; e2y = cy - fwd; }
 
-  // Глаза
   ctx.fillStyle = '#fff';
   ctx.beginPath(); ctx.arc(e1x, e1y, eyeR, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(e2x, e2y, eyeR, 0, Math.PI * 2); ctx.fill();
@@ -289,7 +284,6 @@ function drawSnakeFace(head, dir) {
   ctx.beginPath(); ctx.arc(e1x, e1y, pupilR, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(e2x, e2y, pupilR, 0, Math.PI * 2); ctx.fill();
 
-  // Язык
   ctx.strokeStyle = '#ff3b6b';
   ctx.lineWidth = 1.8;
   ctx.lineCap = 'round';
@@ -347,13 +341,14 @@ function updateHUD() {
   document.getElementById('apples').textContent = apples;
 }
 
-// --- СОБЫТИЯ КЛАВИАТУРЫ ---
+// --- СОБЫТИЯ ---
 document.addEventListener('keydown', (e) => {
   const key = e.key.toLowerCase();
 
   if (key === 'p') {
     clearTimeout(timer);
     gameOver = true; paused = true;
+    restartBtn.classList.add('hidden');
     showNameScreen();
     return;
   }
@@ -376,7 +371,10 @@ document.addEventListener('keydown', (e) => {
   nextDir = newDir;
 });
 
-// --- ИНИЦИАЛИЗАЦИЯ ЭКРАНА ВХОДА ---
+restartBtn.addEventListener('click', () => {
+    if (currentPlayer) init();
+});
+
 (function setupNameScreen() {
   const input = document.getElementById('playerInput');
   const btn = document.getElementById('startBtn');

@@ -15,15 +15,15 @@
       background: #0b0f14;
       color: #e6edf3;
       font-family: system-ui, -apple-system, sans-serif;
-      overflow: hidden; /* Запрещаем скролл на мобилках */
+      overflow: hidden;
       touch-action: none;
+      position: relative; /* Важно для позиционирования кнопки */
     }
     h1 { margin: 10px 0 4px; font-size: 24px; }
     .hud { margin-bottom: 8px; font-size: 16px; text-align: center; }
     .hud .name { color: #2ecc71; font-weight: 600; }
     .hud .best { color: #f1c40f; }
     
-    /* Делаем холст резиновым */
     canvas {
       border: 2px solid #30363d;
       border-radius: 8px;
@@ -67,6 +67,27 @@
     .leaderboard td.name { color: #2ecc71; }
     .leaderboard tr.current td { background: rgba(46, 204, 113, 0.08); }
     .leaderboard .empty { text-align: center; color: #484f58; font-style: italic; }
+
+    /* --- Кнопка перезапуска --- */
+    #restart-btn {
+      position: absolute;
+      top: 60%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #2ecc71;
+      color: #0b0f14;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 8px;
+      font-size: 20px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
+      z-index: 5;
+      transition: background 0.2s;
+    }
+    #restart-btn:hover { background: #27ae60; }
+    #restart-btn.hidden { display: none; }
   </style>
 </head>
 <body>
@@ -80,8 +101,9 @@
     Рекорд: <span class="best" id="bestScore">0</span>
   </div>
 
-  <!-- Размер в атрибутах задаем изначально, JS подгонит под экран -->
   <canvas id="game" width="480" height="480"></canvas>
+  
+  <button id="restart-btn" class="hidden">Играть снова</button>
 
   <p>
     Управление: свайпы по экрану (на телефоне) или стрелки / WASD (на ПК).<br>
@@ -89,7 +111,6 @@
     Красное яблоко — еда. Фиолетовое с «?» — ловушка.
   </p>
 
-  <!-- Экран входа -->
   <div class="screen" id="nameScreen">
     <h2>🐍 Как тебя зовут?</h2>
     <input id="playerInput" maxlength="16" placeholder="Игрок" autocomplete="off">
@@ -97,7 +118,6 @@
     <div class="leaderboard" id="leaderboard"></div>
   </div>
 
-  <!-- Подключаем JS -->
   <script src="game.js"></script>
 </body>
 </html>
