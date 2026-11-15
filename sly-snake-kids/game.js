@@ -23,7 +23,7 @@ let currentPlayer = null;
 let isTrainingMode = false; 
 let gameInterrupted = false; 
 
-// Для мыши
+// Переменные для мыши
 let mouseX = -100; 
 let mouseY = -100;
 let isHoveringCanvas = false;
@@ -33,6 +33,7 @@ let celebrationText = '';
 let celebrationTimer = 0;
 let nextCelebrationScore = 100; 
 
+// ... (функции createParticles, updateParticles, drawParticles без изменений) ...
 function createParticles() {
     const colors = ['#e74c3c', '#f1c40f', '#2ecc71', '#3498db', '#9b59b6'];
     for (let i = 0; i < 60; i++) {
@@ -44,7 +45,6 @@ function createParticles() {
         });
     }
 }
-
 function updateParticles() {
     for (let i = particles.length - 1; i >= 0; i--) {
         let p = particles[i];
@@ -52,7 +52,6 @@ function updateParticles() {
         if (p.life <= 0) particles.splice(i, 1);
     }
 }
-
 function drawParticles() {
     particles.forEach(p => {
         ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
@@ -68,7 +67,7 @@ function resizeCanvas() {
 }
 window.addEventListener('resize', resizeCanvas);
 
-// --- УПРАВЛЕНИЕ СВАЙПАМИ ---
+// --- УПРАВЛЕНИЕ СВАЙПАМИ (Мобилки) ---
 let touchStartX = 0, touchStartY = 0;
 window.addEventListener('touchstart', e => {
     touchStartX = e.changedTouches[0].screenX;
@@ -93,10 +92,10 @@ window.addEventListener('touchend', e => {
     if (newDir) nextDir = newDir;
 });
 
-// --- УПРАВЛЕНИЕ МЫШЬЮ ---
+// --- УПРАВЛЕНИЕ МЫШЬЮ (ПК) ---
 canvas.addEventListener('mousemove', e => {
     const rect = canvas.getBoundingClientRect();
-    // Переводим координаты мыши в координаты холста (учитываем масштаб)
+    // Пересчитываем координаты мыши в координаты холста
     mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
     mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
     isHoveringCanvas = true;
@@ -107,45 +106,42 @@ canvas.addEventListener('mouseleave', () => {
 });
 
 canvas.addEventListener('mousedown', e => {
-    if (paused || gameOver || !currentPlayer || e.button !== 0) return; // Только левая кнопка
+    if (paused || gameOver || !currentPlayer || e.button !== 0) return;
 
     const rect = canvas.getBoundingClientRect();
     const clickX = (e.clientX - rect.left) * (canvas.width / rect.width);
     const clickY = (e.clientY - rect.top) * (canvas.height / rect.height);
 
-    // Вычисляем, куда кликнули относительно головы змейки
+    // Находим центр головы змейки
     const head = snake[0];
     const headCenterX = head.x * CELL + CELL / 2;
     const headCenterY = head.y * CELL + CELL / 2;
 
+    // Вычисляем разницу
     const dx = clickX - headCenterX;
     const dy = clickY - headCenterY;
 
     let newDir = null;
 
-    // Определяем основное направление клика
+    // Определяем, куда кликнули (по горизонтали или вертикали вектор длиннее)
     if (Math.abs(dx) > Math.abs(dy)) {
+        // Горизонтальный клик
         if (dx > 0 && dir.x === 0) newDir = { x: 1, y: 0 };
         else if (dx < 0 && dir.x === 0) newDir = { x: -1, y: 0 };
     } else {
+        // Вертикальный клик
         if (dy > 0 && dir.y === 0) newDir = { x: 0, y: 1 };
         else if (dy < 0 && dir.y === 0) newDir = { x: 0, y: -1 };
     }
 
-    // Если направление валидное (не разворот на 180) - применяем
+    // Если направление выбрано и это не разворот на 180 градусов, применяем
     if (newDir) {
         nextDir = newDir;
-    } else {
-        // Если кликнули прямо перед носом или сзади, попробуем повернуть в сторону
-        if (dir.x !== 0 && Math.abs(dy) > 10) {
-            nextDir = { x: 0, y: dy > 0 ? 1 : -1 };
-        } else if (dir.y !== 0 && Math.abs(dx) > 10) {
-            nextDir = { x: dx > 0 ? 1 : -1, y: 0 };
-        }
     }
 });
 
 
+// ... (Статистика: loadStats, saveStats, getPlayerStats, saveGameResult, renderLeaderboard, escapeHtml без изменений) ...
 function loadStats() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -155,14 +151,11 @@ function loadStats() {
     return data;
   } catch (e) { return { players: {} }; }
 }
-
 function saveStats(data) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) {} }
-
 function getPlayerStats(name) {
   const stats = loadStats();
   return stats.players[name] || { bestScore: 0, bestLevel: 1, games: 0, totalApples: 0, lastPlayed: 0 };
 }
-
 function saveGameResult() {
   if (!currentPlayer) return { newRecord: false };
   const stats = loadStats();
@@ -175,13 +168,11 @@ function saveGameResult() {
   stats.players[currentPlayer] = p; saveStats(stats);
   return { newRecord };
 }
-
 function renderLeaderboard(highlightName) {
   const box = document.getElementById('leaderboard');
   const stats = loadStats();
   const list = Object.entries(stats.players).map(([name, p]) => ({ name, ...p }))
     .sort((a, b) => b.bestScore - a.bestScore).slice(0, 5);
-
   if (list.length === 0) {
     box.innerHTML = '<h3>Таблица лидеров</h3><div class="empty">Пока пусто. Стань первым!</div>';
     return;
@@ -194,7 +185,6 @@ function renderLeaderboard(highlightName) {
   html += '</table>';
   box.innerHTML = html;
 }
-
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
@@ -218,11 +208,8 @@ function showNameScreen() {
   pauseBtn.classList.add('hidden');
   restartBtn.classList.add('hidden');
 
-  if (gameInterrupted) {
-      resumeGameBtn.classList.remove('hidden');
-  } else {
-      resumeGameBtn.classList.add('hidden');
-  }
+  if (gameInterrupted) resumeGameBtn.classList.remove('hidden');
+  else resumeGameBtn.classList.add('hidden');
   
   setTimeout(() => input.focus(), 50);
 }
@@ -238,7 +225,6 @@ function startWithPlayer(name, trainingMode = false) {
   document.getElementById('nameScreen').classList.add('hidden');
   
   gameInterrupted = false;
-
   const p = getPlayerStats(name);
   document.getElementById('bestScore').textContent = p.bestScore;
   init();
@@ -366,14 +352,13 @@ function draw() {
       lines.forEach((line, i) => { ctx.fillText(line, canvas.width / 2, canvas.height / 2 - 40 + i * 32); });
   }
 
-  // --- РИСУЕМ ПРИЦЕЛ МЫШИ ---
+  // Рисуем прицел мыши
   if (isHoveringCanvas && !paused && !gameOver && currentPlayer) {
       ctx.beginPath();
       ctx.arc(mouseX, mouseY, 8, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(46, 204, 113, 0.7)'; // Зеленоватый прицел
+      ctx.strokeStyle = 'rgba(46, 204, 113, 0.7)';
       ctx.lineWidth = 2;
       ctx.stroke();
-      
       ctx.beginPath();
       ctx.arc(mouseX, mouseY, 2, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(46, 204, 113, 0.7)';
@@ -463,18 +448,15 @@ pauseBtn.addEventListener('touchstart', (e) => { e.preventDefault(); togglePause
 pauseBtn.addEventListener('click', togglePause);
 
 btnResume.addEventListener('click', togglePause);
-
 btnRestart.addEventListener('click', () => { init(); });
 
 btnQuit.addEventListener('click', () => {
     clearTimeout(timer); 
     paused = true; 
     gameInterrupted = true; 
-    
     pauseMenu.classList.add('hidden');
     pauseBtn.classList.add('hidden');
     restartBtn.classList.add('hidden');
-    
     showNameScreen(); 
 });
 
