@@ -1,3 +1,4 @@
+
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const restartBtn = document.getElementById('restart-btn');
@@ -13,7 +14,48 @@ let snake, dir, nextDir, food, fakeFood;
 let score, level, apples, speed;
 let paused, gameOver, gameOverMsg, timer;
 let currentPlayer = null;
-let isTrainingMode = false; // Флаг тренировочного режима
+let isTrainingMode = false; 
+
+// --- СИСТЕМА ЧАСТИЦ (САЛЮТ) ---
+let particles = [];
+let celebrationText = '';
+let celebrationTimer = 0;
+let nextCelebrationScore = 100; // Следующий порог для салюта
+
+function createParticles() {
+    const colors = ['#e74c3c', '#f1c40f', '#2ecc71', '#3498db', '#9b59b6'];
+    for (let i = 0; i < 60; i++) {
+        particles.push({
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            vx: (Math.random() - 0.5) * 20,
+            vy: (Math.random() - 0.5) * 20,
+            life: 1, 
+            color: colors[Math.floor(Math.random() * colors.length)],
+            size: Math.random() * 8 + 4
+        });
+    }
+}
+
+function updateParticles() {
+    for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.3;
+        p.life -= 0.02;
+        if (p.life <= 0) particles.splice(i, 1);
+    }
+}
+
+function drawParticles() {
+    particles.forEach(p => {
+        ctx.globalAlpha = p.life;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x, p.y, p.size, p.size);
+        ctx.globalAlpha = 1;
+    });
+}
 
 // --- АДАПТАЦИЯ ПОД МОБИЛКИ ---
 function resizeCanvas() {
@@ -138,7 +180,7 @@ function startWithPlayer(name, trainingMode = false) {
   name = name.trim();
   if (!name) return;
   currentPlayer = name;
-  isTrainingMode = trainingMode; // Сохраняем режим
+  isTrainingMode = trainingMode; 
   localStorage.setItem(LAST_PLAYER_KEY, name);
 
   document.getElementById('playerDisplay').textContent = name + (isTrainingMode ? " (Трен.)" : "");
@@ -154,6 +196,9 @@ function startWithPlayer(name, trainingMode = false) {
 function init() {
   resizeCanvas();
   restartBtn.classList.add('hidden'); 
+  particles = []; 
+  celebrationTimer = 0;
+  nextCelebrationScore = 100; // Сбрасываем порог салюта
   
   const startX = Math.floor(COLS / 2);
   const startY = Math.floor(ROWS / 2);
@@ -169,7 +214,6 @@ function init() {
   level = 1;
   apples = 0;
   
-  // Настройки скорости в зависимости от режима
   speed = isTrainingMode ? 200 : 150; 
   
   paused = false;
@@ -179,14 +223,22 @@ function init() {
   fakeFood = null;
   updateHUD();
   draw();
+  
   clearTimeout(timer);
-  loop();
+  timer = setTimeout(loop, speed);
 }
 
 function loop() {
-  clearTimeout(timer);
-  if (!paused && !gameOver) tick();
-  timer = setTimeout(loop, speed);
+  if (particles.length > 0) updateParticles(); 
+  if (celebrationTimer > 0) celebrationTimer--; 
+  
+  if (!paused && !gameOver) {
+      tick();
+  } else {
+      draw();
+      // Если пауза или гейм овер, продолжаем крутить анимацию
+      timer = setTimeout(loop, 30);
+  }
 }
 
 function tick() {
@@ -204,14 +256,22 @@ function tick() {
     return endGame('Хитрый змей съел поддельное яблоко!');
   }
 
+  let ateFood = false;
+
   if (newHead.x === food.x && newHead.y === food.y) {
     snake.unshift(newHead);
-    
-    // В тренировке даем больше очков
     score += isTrainingMode ? 20 * level : 10 * level; 
     apples++;
+    ateFood = true;
     
-    // В тренировке мы не ускоряемся и не добавляем ловушки
+    // ПРОВЕРКА НА САЛЮТ
+    if (score >= nextCelebrationScore) {
+        createParticles();
+        celebrationText = `🎉 ${nextCelebrationScore} ОЧКОВ! 🎉`;
+        celebrationTimer = 100; // ~3 секунды
+        nextCelebrationScore += 100; // Следующий порог (200, 300...)
+    }
+    
     if (!isTrainingMode && apples % 5 === 0) {
       level++;
       speed = Math.max(70, 150 - (level - 1) * 10);
@@ -224,7 +284,12 @@ function tick() {
     snake.unshift(newHead);
     snake.pop();
   }
+
   draw();
+  
+  // Если съели еду, делаем паузу speed. Если нет - тоже speed, но без сброса анимации
+  clearTimeout(timer);
+  timer = setTimeout(loop, speed);
 }
 
 function endGame(msg) {
@@ -237,18 +302,7 @@ function endGame(msg) {
   document.getElementById('bestScore').textContent = p.bestScore;
   
   restartBtn.classList.remove('hidden');
-  
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 24px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  
-  const lines = gameOverMsg.split('\n');
-  lines.forEach((line, i) => {
-    ctx.fillText(line, canvas.width / 2, canvas.height / 2 - 20 + i * 32);
-  });
+  draw(); 
 }
 
 function randomFreeCell() {
@@ -286,7 +340,33 @@ function draw() {
 
   drawSnakeFace(snake[0], dir);
 
+  if (particles.length > 0) drawParticles();
+
+  if (celebrationTimer > 0) {
+    ctx.fillStyle = `rgba(241, 196, 15, ${celebrationTimer / 100})`; 
+    ctx.font = 'bold 36px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+    ctx.shadowBlur = 10;
+    ctx.fillText(celebrationText, canvas.width / 2, canvas.height / 2);
+    ctx.shadowBlur = 0; 
+  }
+
   if (paused) overlay('Пауза');
+  
+  if (gameOver) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 24px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const lines = gameOverMsg.split('\n');
+      lines.forEach((line, i) => {
+        ctx.fillText(line, canvas.width / 2, canvas.height / 2 - 20 + i * 32);
+      });
+  }
 }
 
 function drawSnakeFace(head, dir) {
