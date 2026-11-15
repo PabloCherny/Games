@@ -1,0 +1,6 @@
+services:
+  game:
+    build: .
+    container_name: weather_quest_game
+    ports:
+      - "8090:80"
