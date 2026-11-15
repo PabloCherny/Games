@@ -194,29 +194,93 @@
         ctx.fillRect(seg.x * CELL + 2, seg.y * CELL + 2, CELL - 4, CELL - 4);
       });
 
-      // Глаза
-      const head = snake[0];
-      ctx.fillStyle = '#0b0f14';
-      const hx = head.x * CELL;
-      const hy = head.y * CELL;
-      if (dir.x === 1) {
-        ctx.fillRect(hx + 15, hy + 6, 3, 3);
-        ctx.fillRect(hx + 15, hy + 15, 3, 3);
-      } else if (dir.x === -1) {
-        ctx.fillRect(hx + 6, hy + 6, 3, 3);
-        ctx.fillRect(hx + 6, hy + 15, 3, 3);
-      } else if (dir.y === 1) {
-        ctx.fillRect(hx + 6, hy + 15, 3, 3);
-        ctx.fillRect(hx + 15, hy + 15, 3, 3);
-      } else {
-        ctx.fillRect(hx + 6, hy + 6, 3, 3);
-        ctx.fillRect(hx + 15, hy + 6, 3, 3);
-      }
+      // Мордочка
+      drawSnakeFace(snake[0], dir);
 
       // Оверлеи
       if (paused) overlay('Пауза');
       if (gameOver) overlay(gameOverMsg + '\nНажми R');
     }
+
+    function drawSnakeFace(head, dir) {
+      const cx = head.x * CELL + CELL / 2; // центр головы по X
+      const cy = head.y * CELL + CELL / 2; // центр головы по Y
+
+      const off = 5;      // боковое смещение глаз от центра
+      const fwd = 5;      // смещение глаз вперёд (по направлению движения)
+      const eyeR = 3.5;   // радиус белка
+      const pupilR = 1.8; // радиус зрачка
+
+      let e1x, e1y, e2x, e2y;
+      if (dir.x === 1) {          // смотрит вправо
+        e1x = cx + fwd; e1y = cy - off;
+        e2x = cx + fwd; e2y = cy + off;
+      } else if (dir.x === -1) {  // смотрит влево
+        e1x = cx - fwd; e1y = cy - off;
+        e2x = cx - fwd; e2y = cy + off;
+      } else if (dir.y === 1) {   // смотрит вниз
+        e1x = cx - off; e1y = cy + fwd;
+        e2x = cx + off; e2y = cy + fwd;
+      } else {                     // смотрит вверх
+        e1x = cx - off; e1y = cy - fwd;
+        e2x = cx + off; e2y = cy - fwd;
+      }
+
+      // Белки глаз
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(e1x, e1y, eyeR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(e2x, e2y, eyeR, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Зрачки
+            // Зрачки
+      ctx.fillStyle = '#000000';
+      ctx.beginPath();
+      ctx.arc(e1x, e1y, pupilR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(e2x, e2y, pupilR, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Язык (раздвоенный)
+      ctx.strokeStyle = '#ff3b6b';
+      ctx.lineWidth = 1.8;
+      ctx.lineCap = 'round';
+
+      let tx, ty;          // кончик языка (точка старта)
+      let dx = 0, dy = 0;  // направление языка
+      if (dir.x === 1)       { tx = cx + 10; ty = cy; dx = 1;  dy = 0; }
+      else if (dir.x === -1) { tx = cx - 10; ty = cy; dx = -1; dy = 0; }
+      else if (dir.y === 1)  { tx = cx; ty = cy + 10; dx = 0;  dy = 1; }
+      else                   { tx = cx; ty = cy - 10; dx = 0;  dy = -1; }
+
+      const tLen = 5;   // длина язычка
+      const tSpred = 3; // раздвоение
+
+      // Основная часть язычка
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(tx + dx * tLen, ty + dy * tLen);
+      ctx.stroke();
+
+      // Раздвоенный кончик (перпендикулярные «усики»)
+      const bx = tx + dx * tLen;
+      const by = ty + dy * tLen;
+      // перпендикуляр к направлению: (-dy, dx)
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx - dy * tSpred + dx * tSpred, by + dx * tSpred + dy * tSpred);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx + dy * tSpred + dx * tSpred, by - dx * tSpred + dy * tSpred);
+      ctx.stroke();
+    }
+    
 
     function drawCircleCell(x, y, color, text = '') {
       const px = x * CELL;

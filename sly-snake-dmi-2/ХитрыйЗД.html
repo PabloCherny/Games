@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Хитрый Змей Дми 2</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #0b0f14;
+      color: #e6edf3;
+      font-family: system-ui, sans-serif;
+    }
+    h1 { margin: 10px 0 4px; font-size: 28px; }
+    .hud { margin-bottom: 8px; font-size: 17px; text-align: center; }
+    .hud .name { color: #2ecc71; font-weight: 600; }
+    .hud .best { color: #f1c40f; }
+    canvas {
+      border: 2px solid #30363d;
+      border-radius: 8px;
+      background: #111;
+      box-shadow: 0 0 30px rgba(46, 204, 113, 0.15);
+    }
+    p { margin-top: 10px; color: #8b949e; font-size: 14px; text-align: center; line-height: 1.4; }
+
+    /* --- Экран входа --- */
+    .screen {
+      position: fixed;
+      inset: 0;
+      background: rgba(11, 15, 20, 0.97);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .screen.hidden { display: none; }
+    .screen h2 { margin: 0 0 16px; font-size: 24px; }
+    .screen input {
+      background: #161b22;
+      border: 2px solid #30363d;
+      color: #e6edf3;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 18px;
+      width: 260px;
+      text-align: center;
+      outline: none;
+      margin-bottom: 12px;
+      font-family: inherit;
+    }
+    .screen input:focus { border-color: #2ecc71; }
+    .screen button {
+      background: #2ecc71;
+      color: #0b0f14;
+      border: none;
+      padding: 12px 32px;
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background .15s;
+    }
+    .screen button:hover { background: #27ae60; }
+    .screen button:disabled { background: #30363d; color: #8b949e; cursor: not-allowed; }
+
+    .leaderboard {
+      margin-top: 24px;
+      width: 340px;
+      max-width: 100%;
+    }
+    .leaderboard h3 {
+      margin: 0 0 8px;
+      font-size: 15px;
+      color: #8b949e;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+    .leaderboard table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .leaderboard th, .leaderboard td {
+      padding: 6px 8px;
+      text-align: left;
+      border-bottom: 1px solid #21262d;
+    }
+    .leaderboard th { color: #8b949e; font-weight: 500; font-size: 12px; }
+    .leaderboard td.rank { color: #f1c40f; font-weight: 700; width: 28px; }
+    .leaderboard td.name { color: #2ecc71; }
+    .leaderboard tr.current td { background: rgba(46, 204, 113, 0.08); }
+    .leaderboard .empty { text-align: center; color: #484f58; font-style: italic; }
+  </style>
+</head>
+<body>
+  <h1>Хитрый Змей Дми 2</h1>
+
+  <div class="hud">
+    <span class="name" id="playerDisplay">—</span> ·
+    Счёт: <span id="score">0</span> ·
+    Уровень: <span id="level">1</span> ·
+    Яблок: <span id="apples">0</span> ·
+    Рекорд: <span class="best" id="bestScore">0</span>
+  </div>
+
+  <canvas id="game" width="480" height="480"></canvas>
+
+  <p>
+    Управление: стрелки / WASD. Пробел — пауза. R — заново. P — сменить игрока.<br>
+    Красное яблоко — еда. Фиолетовое с «?» — ловушка.
+  </p>
+
+  <!-- Экран входа -->
+  <div class="screen" id="nameScreen">
+    <h2>🐍 Как тебя зовут?</h2>
+    <input id="playerInput" maxlength="16" placeholder="Игрок" autocomplete="off">
+    <button id="startBtn" disabled>Играть</button>
+
+    <div class="leaderboard" id="leaderboard"></div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const CELL = 24;
+    const COLS = canvas.width / CELL;
+    const ROWS = canvas.height / CELL;
+
+    const STORAGE_KEY = 'snake_dmi2_stats_v1';
+    const LAST_PLAYER_KEY = 'snake_dmi2_last_player';
+
+    let snake, dir, nextDir, food, fakeFood;
+    let score, level, apples, speed;
+    let paused, gameOver, gameOverMsg, timer;
+    let currentPlayer = null;
+
+    /* ============ СТАТИСТИКА ============ */
+
+    function loadStats() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return { players: {} };
+        const data = JSON.parse(raw);
+        if (!data.players) data.players = {};
+        return data;
+      } catch (e) {
+        return { players: {} };
+      }
+    }
+
+    function saveStats(data) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      } catch (e) { /* ignore */ }
+    }
+
+    function getPlayerStats(name) {
+      const stats = loadStats();
+      return stats.players[name] || { bestScore: 0, bestLevel: 1, games: 0, totalApples: 0, lastPlayed: 0 };
+    }
+
+    function saveGameResult() {
+      if (!currentPlayer) return { newRecord: false };
+      const stats = loadStats();
+      const p = stats.players[currentPlayer] ||
+        { bestScore: 0, bestLevel: 1, games: 0, totalApples: 0, lastPlayed: 0 };
+
+      p.games++;
+      p.totalApples += apples;
+      const newRecord = score > p.bestScore;
+      if (newRecord) p.bestScore = score;
+      if (level > p.bestLevel) p.bestLevel = level;
+      p.lastPlayed = Date.now();
+
+      stats.players[currentPlayer] = p;
+      saveStats(stats);
+      return { newRecord };
+    }
+
+    function renderLeaderboard(highlightName) {
+      const box = document.getElementById('leaderboard');
+      const stats = loadStats();
+      const list = Object.entries(stats.players)
+        .map(([name, p]) => ({ name, ...p }))
+        .sort((a, b) => b.bestScore - a.bestScore)
+        .slice(0, 5);
+
+      if (list.length === 0) {
+        box.innerHTML = '<h3>Таблица лидеров</h3><div class="empty">Пока пусто. Стань первым!</div>';
+        return;
+      }
+
+      let html = '<h3>Таблица лидеров</h3><table>';
+      html += '<tr><th>#</th><th>Имя</th><th>Рекорд</th><th>Игр</th></tr>';
+      list.forEach((p, i) => {
+        const cls = (p.name === highlightName) ? ' class="current"' : '';
+        html += `<tr${cls}>` +
+          `<td class="rank">${i + 1}</td>` +
+          `<td class="name">${escapeHtml(p.name)}</td>` +
+          `<td>${p.bestScore}</td>` +
+          `<td>${p.games}</td>` +
+          `</tr>`;
+      });
+      html += '</table>';
+      box.innerHTML = html;
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
+    function showNameScreen() {
+      const input = document.getElementById('playerInput');
+      const btn = document.getElementById('startBtn');
+      const screen = document.getElementById('nameScreen');
+
+      const last = localStorage.getItem(LAST_PLAYER_KEY) || '';
+      input.value = last;
+      btn.disabled = last.trim().length === 0;
+
+      renderLeaderboard(last);
+      screen.classList.remove('hidden');
+      setTimeout(() => input.focus(), 50);
+    }
+
+    function startWithPlayer(name) {
+      name = name.trim();
+      if (!name) return;
+      currentPlayer = name;
+      localStorage.setItem(LAST_PLAYER_KEY, name);
+
+      document.getElementById('playerDisplay').textContent = name;
+      document.getElementById('nameScreen').classList.add('hidden');
+
+      const p = getPlayerStats(name);
+      document.getElementById('bestScore').textContent = p.bestScore;
+
+      init();
+    }
+
+    /* ============ ИГРА ============ */
+
+    function init() {
+      snake = [
+        { x: 5, y: 10 },
+        { x: 4, y: 10 },
+        { x: 3, y: 10 }
+      ];
+      dir = { x: 1, y: 0 };
+      nextDir = { x: 1, y: 0 };
+      score = 0;
+      level = 1;
+      apples = 0;
+      speed = 150;
+      paused = false;
+      gameOver = false;
+      gameOverMsg = '';
+      food = randomFreeCell();
+      fakeFood = null;
+      updateHUD();
+      draw();
+      clearTimeout(timer);
+      loop();
+    }
+
+    function loop() {
+      clearTimeout(timer);
+      if (!paused && !gameOver) tick();
+      timer = setTimeout(loop, speed);
+    }
+
+    function tick() {
+      dir = nextDir;
+      const head = snake[0];
+      const newHead = { x: head.x + dir.x, y: head.y + dir.y };
+
+      if (newHead.x < 0 || newHead.x >= COLS || newHead.y < 0 || newHead.y >= ROWS) {
+        return endGame('Ты врезался в стену!');
+      }
+      if (snake.some(s => s.x === newHead.x && s.y === newHead.y)) {
+        return endGame('Ты укусил себя!');
+      }
+      if (fakeFood && newHead.x === fakeFood.x && newHead.y === fakeFood.y) {
+        return endGame('Хитрый змей съел поддельное яблоко!');
+      }
+
+      if (newHead.x === food.x && newHead.y === food.y) {
+        snake.unshift(newHead);
+        score += 10 * level;
+        apples++;
+        if (apples % 5 === 0) {
+          level++;
+          speed = Math.max(70, 150 - (level - 1) * 10);
+          fakeFood = randomFreeCell();
+        }
+        food = randomFreeCell();
+        updateHUD();
+      } else {
+        snake.unshift(newHead);
+        snake.pop();
+      }
+      draw();
+    }
+
+    function endGame(msg) {
+      gameOver = true;
+      gameOverMsg = msg;
+      const { newRecord } = saveGameResult();
+      if (newRecord) {
+        gameOverMsg += '\n🏆 Новый рекорд: ' + score;
+      }
+      const p = getPlayerStats(currentPlayer);
+      document.getElementById('bestScore').textContent = p.bestScore;
+      draw();
+    }
+
+    function randomFreeCell() {
+      for (let i = 0; i < 1000; i++) {
+        const cell = { x: Math.floor(Math.random() * COLS), y: Math.floor(Math.random() * ROWS) };
+        if (snake.some(s => s.x === cell.x && s.y === cell.y)) continue;
+        if (food && food.x === cell.x && food.y === cell.y) continue;
+        if (fakeFood && fakeFood.x === cell.x && fakeFood.y === cell.y) continue;
+        return cell;
+      }
+      for (let y = 0; y < ROWS; y++)
+        for (let x = 0; x < COLS; x++) {
+          if (snake.some(s => s.x === x && s.y === y)) continue;
+          if (food && food.x === x && food.y === y) continue;
+          if (fakeFood && fakeFood.x === x && fakeFood.y === y) continue;
+          return { x, y };
+        }
+      return { x: 0, y: 0 };
+    }
+
+    function draw() {
+      ctx.fillStyle = '#111';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.strokeStyle = '#222';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= COLS; i++) {
+        ctx.beginPath(); ctx.moveTo(i * CELL, 0); ctx.lineTo(i * CELL, canvas.height); ctx.stroke();
+      }
+      for (let i = 0; i <= ROWS; i++) {
+        ctx.beginPath(); ctx.moveTo(0, i * CELL); ctx.lineTo(canvas.width, i * CELL); ctx.stroke();
+      }
+
+      drawCircleCell(food.x, food.y, '#e74c3c');
+      if (fakeFood) drawCircleCell(fakeFood.x, fakeFood.y, '#9b59b6', '?');
+
+      snake.forEach((seg, i) => {
+        ctx.fillStyle = i === 0 ? '#2ecc71' : '#27ae60';
+        ctx.fillRect(seg.x * CELL + 2, seg.y * CELL + 2, CELL - 4, CELL - 4);
+      });
+
+      drawSnakeFace(snake[0], dir);
+
+      if (paused) overlay('Пауза');
+      if (gameOver) overlay(gameOverMsg + '\nНажми R или P');
+    }
+
+    function drawSnakeFace(head, dir) {
+      const cx = head.x * CELL + CELL / 2;
+      const cy = head.y * CELL + CELL / 2;
+      const off = 5, fwd = 5, eyeR = 3.5, pupilR = 1.8;
+
+      let e1x, e1y, e2x, e2y;
+      if (dir.x === 1)       { e1x = cx + fwd; e1y = cy - off; e2x = cx + fwd; e2y = cy + off; }
+      else if (dir.x === -1) { e1x = cx - fwd; e1y = cy - off; e2x = cx - fwd; e2y = cy + off; }
+      else if (dir.y === 1)  { e1x = cx - off; e1y = cy + fwd; e2x = cx + off; e2y = cy + fwd; }
+      else                   { e1x = cx - off; e1y = cy - fwd; e2x = cx + off; e2y = cy - fwd; }
+
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(e1x, e1y, eyeR, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(e2x, e2y, eyeR, 0, Math.PI * 2); ctx.fill();
+
+      ctx.fillStyle = '#000';
+      ctx.beginPath(); ctx.arc(e1x, e1y, pupilR, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(e2x, e2y, pupilR, 0, Math.PI * 2); ctx.fill();
+
+      // Язык
+      ctx.strokeStyle = '#ff3b6b';
+      ctx.lineWidth = 1.8;
+      ctx.lineCap = 'round';
+
+      let tx, ty, dx = 0, dy = 0;
+      if (dir.x === 1)       { tx = cx + 10; ty = cy; dx = 1;  dy = 0; }
+      else if (dir.x === -1) { tx = cx - 10; ty = cy; dx = -1; dy = 0; }
+      else if (dir.y === 1)  { tx = cx; ty = cy + 10; dx = 0;  dy = 1; }
+      else                   { tx = cx; ty = cy - 10; dx = 0;  dy = -1; }
+
+      const tLen = 5, tSpred = 3;
+      ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx + dx * tLen, ty + dy * tLen); ctx.stroke();
+      const bx = tx + dx * tLen, by = ty + dy * tLen;
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx - dy * tSpred + dx * tSpred, by + dx * tSpred + dy * tSpred);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx + dy * tSpred + dx * tSpred, by - dx * tSpred + dy * tSpred);
+      ctx.stroke();
+    }
+
+    function drawCircleCell(x, y, color, text = '') {
+      const px = x * CELL, py = y * CELL;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(px + CELL / 2, py + CELL / 2, CELL / 2 - 3, 0, Math.PI * 2);
+      ctx.fill();
+      if (text) {
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, px + CELL / 2, py + CELL / 2);
+      }
+    }
+
+    function overlay(text) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 24px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const lines = text.split('\n');
+      lines.forEach((line, i) => {
+        ctx.fillText(line, canvas.width / 2,
+          canvas.height / 2 + (i - (lines.length - 1) / 2) * 32);
+      });
+    }
+
+    function updateHUD() {
+      document.getElementById('score').textContent = score;
+      document.getElementById('level').textContent = level;
+      document.getElementById('apples').textContent = apples;
+    }
+
+    /* ============ ОБРАБОТЧИКИ ============ */
+
+    document.addEventListener('keydown', (e) => {
+      const key = e.key.toLowerCase();
+
+      // P — сменить игрока
+      if (key === 'p') {
+        clearTimeout(timer);
+        gameOver = true;
+        paused = true;
+        showNameScreen();
+        return;
+      }
+
+      if (key === 'r') {
+        if (currentPlayer) init();
+        return;
+      }
+
+      if (key === ' ') {
+        e.preventDefault();
+        if (!gameOver && currentPlayer) {
+          paused = !paused;
+          draw();
+        }
+        return;
+      }
+
+      if (paused || gameOver || !currentPlayer) return;
+
+      let newDir = null;
+      if (key === 'arrowup' || key === 'w') newDir = { x: 0, y: -1 };
+      if (key === 'arrowdown' || key === 's') newDir = { x: 0, y: 1 };
+      if (key === 'arrowleft' || key === 'a') newDir = { x: -1, y: 0 };
+      if (key === 'arrowright' || key === 'd') newDir = { x: 1, y: 0 };
+      if (!newDir) return;
+
+      if (newDir.x === -dir.x && newDir.y === -dir.y) return;
+      nextDir = newDir;
+    });
+
+    // Экран входа
+    (function setupNameScreen() {
+      const input = document.getElementById('playerInput');
+      const btn = document.getElementById('startBtn');
+
+      input.addEventListener('input', () => {
+        btn.disabled = input.value.trim().length === 0;
+      });
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !btn.disabled) {
+          startWithPlayer(input.value);
+        }
+      });
+      btn.addEventListener('click', () => {
+        startWithPlayer(input.value);
+      });
+    })();
+
+    // Запуск: сначала экран входа
+    showNameScreen();
+  </script>
+</body>
+</html>
