@@ -13,6 +13,7 @@ let snake, dir, nextDir, food, fakeFood;
 let score, level, apples, speed;
 let paused, gameOver, gameOverMsg, timer;
 let currentPlayer = null;
+let isTrainingMode = false; // Флаг тренировочного режима
 
 // --- АДАПТАЦИЯ ПОД МОБИЛКИ ---
 function resizeCanvas() {
@@ -117,25 +118,30 @@ function escapeHtml(s) {
 
 function showNameScreen() {
   const input = document.getElementById('playerInput');
-  const btn = document.getElementById('startBtn');
+  const startBtn = document.getElementById('startBtn');
+  const trainBtn = document.getElementById('trainBtn');
   const screen = document.getElementById('nameScreen');
 
   const last = localStorage.getItem(LAST_PLAYER_KEY) || '';
   input.value = last;
-  btn.disabled = last.trim().length === 0;
+  
+  const disable = last.trim().length === 0;
+  startBtn.disabled = disable;
+  trainBtn.disabled = disable;
 
   renderLeaderboard(last);
   screen.classList.remove('hidden');
   setTimeout(() => input.focus(), 50);
 }
 
-function startWithPlayer(name) {
+function startWithPlayer(name, trainingMode = false) {
   name = name.trim();
   if (!name) return;
   currentPlayer = name;
+  isTrainingMode = trainingMode; // Сохраняем режим
   localStorage.setItem(LAST_PLAYER_KEY, name);
 
-  document.getElementById('playerDisplay').textContent = name;
+  document.getElementById('playerDisplay').textContent = name + (isTrainingMode ? " (Трен.)" : "");
   document.getElementById('nameScreen').classList.add('hidden');
 
   const p = getPlayerStats(name);
@@ -147,7 +153,7 @@ function startWithPlayer(name) {
 // --- ИГРА ---
 function init() {
   resizeCanvas();
-  restartBtn.classList.add('hidden'); // Прячем кнопку при старте
+  restartBtn.classList.add('hidden'); 
   
   const startX = Math.floor(COLS / 2);
   const startY = Math.floor(ROWS / 2);
@@ -162,7 +168,10 @@ function init() {
   score = 0;
   level = 1;
   apples = 0;
-  speed = 150;
+  
+  // Настройки скорости в зависимости от режима
+  speed = isTrainingMode ? 200 : 150; 
+  
   paused = false;
   gameOver = false;
   gameOverMsg = '';
@@ -197,13 +206,18 @@ function tick() {
 
   if (newHead.x === food.x && newHead.y === food.y) {
     snake.unshift(newHead);
-    score += 10 * level;
+    
+    // В тренировке даем больше очков
+    score += isTrainingMode ? 20 * level : 10 * level; 
     apples++;
-    if (apples % 5 === 0) {
+    
+    // В тренировке мы не ускоряемся и не добавляем ловушки
+    if (!isTrainingMode && apples % 5 === 0) {
       level++;
       speed = Math.max(70, 150 - (level - 1) * 10);
       fakeFood = randomFreeCell();
     }
+    
     food = randomFreeCell();
     updateHUD();
   } else {
@@ -222,10 +236,8 @@ function endGame(msg) {
   const p = getPlayerStats(currentPlayer);
   document.getElementById('bestScore').textContent = p.bestScore;
   
-  // Показываем кнопку
   restartBtn.classList.remove('hidden');
   
-  // Рисуем финальный экран (без подсказок про клавиши)
   ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = '#fff';
@@ -233,7 +245,6 @@ function endGame(msg) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   
-  // Разбиваем текст на строки, если есть перенос
   const lines = gameOverMsg.split('\n');
   lines.forEach((line, i) => {
     ctx.fillText(line, canvas.width / 2, canvas.height / 2 - 20 + i * 32);
@@ -350,7 +361,7 @@ function overlay(text) {
 
 function updateHUD() {
   document.getElementById('score').textContent = score;
-  document.getElementById('level').textContent = level;
+  document.getElementById('level').textContent = isTrainingMode ? '🐢' : level;
   document.getElementById('apples').textContent = apples;
 }
 
@@ -384,22 +395,29 @@ document.addEventListener('keydown', (e) => {
   nextDir = newDir;
 });
 
-// Обработчик кнопки "Играть снова"
 restartBtn.addEventListener('click', () => {
     if (currentPlayer) init();
 });
 
 (function setupNameScreen() {
   const input = document.getElementById('playerInput');
-  const btn = document.getElementById('startBtn');
+  const startBtn = document.getElementById('startBtn');
+  const trainBtn = document.getElementById('trainBtn');
 
   input.addEventListener('input', () => {
-    btn.disabled = input.value.trim().length === 0;
+    const isDisabled = input.value.trim().length === 0;
+    startBtn.disabled = isDisabled;
+    trainBtn.disabled = isDisabled;
   });
+  
   input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !btn.disabled) startWithPlayer(input.value);
+    if (e.key === 'Enter' && !startBtn.disabled) {
+      startWithPlayer(input.value, false);
+    }
   });
-  btn.addEventListener('click', () => startWithPlayer(input.value));
+  
+  startBtn.addEventListener('click', () => startWithPlayer(input.value, false));
+  trainBtn.addEventListener('click', () => startWithPlayer(input.value, true));
 })();
 
 // Запуск
