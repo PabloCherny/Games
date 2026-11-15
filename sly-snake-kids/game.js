@@ -1,6 +1,6 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-const restartBtn = document.getElementById('restart-btn'); // Кнопка перезапуска
+const restartBtn = document.getElementById('restart-btn');
 
 const CELL = 24; 
 let COLS = canvas.width / CELL;
@@ -222,8 +222,22 @@ function endGame(msg) {
   const p = getPlayerStats(currentPlayer);
   document.getElementById('bestScore').textContent = p.bestScore;
   
-  restartBtn.classList.remove('hidden'); // Показываем кнопку
-  draw();
+  // Показываем кнопку
+  restartBtn.classList.remove('hidden');
+  
+  // Рисуем финальный экран (без подсказок про клавиши)
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 24px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  
+  // Разбиваем текст на строки, если есть перенос
+  const lines = gameOverMsg.split('\n');
+  lines.forEach((line, i) => {
+    ctx.fillText(line, canvas.width / 2, canvas.height / 2 - 20 + i * 32);
+  });
 }
 
 function randomFreeCell() {
@@ -262,7 +276,6 @@ function draw() {
   drawSnakeFace(snake[0], dir);
 
   if (paused) overlay('Пауза');
-  if (gameOver) overlay(gameOverMsg + '\nНажми R или P');
 }
 
 function drawSnakeFace(head, dir) {
@@ -371,6 +384,7 @@ document.addEventListener('keydown', (e) => {
   nextDir = newDir;
 });
 
+// Обработчик кнопки "Играть снова"
 restartBtn.addEventListener('click', () => {
     if (currentPlayer) init();
 });

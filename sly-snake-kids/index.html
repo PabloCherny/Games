@@ -17,13 +17,20 @@
       font-family: system-ui, -apple-system, sans-serif;
       overflow: hidden;
       touch-action: none;
-      position: relative; /* Важно для позиционирования кнопки */
     }
     h1 { margin: 10px 0 4px; font-size: 24px; }
     .hud { margin-bottom: 8px; font-size: 16px; text-align: center; }
     .hud .name { color: #2ecc71; font-weight: 600; }
     .hud .best { color: #f1c40f; }
     
+    /* Контейнер для холста и кнопки */
+    .canvas-wrapper {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
     canvas {
       border: 2px solid #30363d;
       border-radius: 8px;
@@ -71,20 +78,19 @@
     /* --- Кнопка перезапуска --- */
     #restart-btn {
       position: absolute;
-      top: 60%;
+      top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
       background: #2ecc71;
       color: #0b0f14;
-      border: none;
+      border: 2px solid #fff;
       padding: 15px 30px;
       border-radius: 8px;
       font-size: 20px;
       font-weight: bold;
       cursor: pointer;
-      box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
-      z-index: 5;
-      transition: background 0.2s;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.8);
+      z-index: 100;
     }
     #restart-btn:hover { background: #27ae60; }
     #restart-btn.hidden { display: none; }
@@ -101,9 +107,11 @@
     Рекорд: <span class="best" id="bestScore">0</span>
   </div>
 
-  <canvas id="game" width="480" height="480"></canvas>
-  
-  <button id="restart-btn" class="hidden">Играть снова</button>
+  <!-- Обертка для холста и кнопки -->
+  <div class="canvas-wrapper">
+    <canvas id="game" width="480" height="480"></canvas>
+    <button id="restart-btn" class="hidden">Играть снова</button>
+  </div>
 
   <p>
     Управление: свайпы по экрану (на телефоне) или стрелки / WASD (на ПК).<br>
