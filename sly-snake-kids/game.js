@@ -1,4 +1,3 @@
-
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const restartBtn = document.getElementById('restart-btn');
@@ -20,7 +19,7 @@ let isTrainingMode = false;
 let particles = [];
 let celebrationText = '';
 let celebrationTimer = 0;
-let nextCelebrationScore = 100; // Следующий порог для салюта
+let nextCelebrationScore = 100; 
 
 function createParticles() {
     const colors = ['#e74c3c', '#f1c40f', '#2ecc71', '#3498db', '#9b59b6'];
@@ -42,7 +41,7 @@ function updateParticles() {
         let p = particles[i];
         p.x += p.vx;
         p.y += p.vy;
-        p.vy += 0.3;
+        p.vy += 0.3; 
         p.life -= 0.02;
         if (p.life <= 0) particles.splice(i, 1);
     }
@@ -198,7 +197,7 @@ function init() {
   restartBtn.classList.add('hidden'); 
   particles = []; 
   celebrationTimer = 0;
-  nextCelebrationScore = 100; // Сбрасываем порог салюта
+  nextCelebrationScore = 100; 
   
   const startX = Math.floor(COLS / 2);
   const startY = Math.floor(ROWS / 2);
@@ -236,7 +235,6 @@ function loop() {
       tick();
   } else {
       draw();
-      // Если пауза или гейм овер, продолжаем крутить анимацию
       timer = setTimeout(loop, 30);
   }
 }
@@ -256,20 +254,16 @@ function tick() {
     return endGame('Хитрый змей съел поддельное яблоко!');
   }
 
-  let ateFood = false;
-
   if (newHead.x === food.x && newHead.y === food.y) {
     snake.unshift(newHead);
     score += isTrainingMode ? 20 * level : 10 * level; 
     apples++;
-    ateFood = true;
     
-    // ПРОВЕРКА НА САЛЮТ
     if (score >= nextCelebrationScore) {
         createParticles();
         celebrationText = `🎉 ${nextCelebrationScore} ОЧКОВ! 🎉`;
-        celebrationTimer = 100; // ~3 секунды
-        nextCelebrationScore += 100; // Следующий порог (200, 300...)
+        celebrationTimer = 100; 
+        nextCelebrationScore += 100; 
     }
     
     if (!isTrainingMode && apples % 5 === 0) {
@@ -287,7 +281,6 @@ function tick() {
 
   draw();
   
-  // Если съели еду, делаем паузу speed. Если нет - тоже speed, но без сброса анимации
   clearTimeout(timer);
   timer = setTimeout(loop, speed);
 }
@@ -302,7 +295,20 @@ function endGame(msg) {
   document.getElementById('bestScore').textContent = p.bestScore;
   
   restartBtn.classList.remove('hidden');
-  draw(); 
+  
+  // Рисуем финальный экран
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 24px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  
+  const lines = gameOverMsg.split('\n');
+  lines.forEach((line, i) => {
+    // Сдвигаем текст выше (на 40 пикселей от центра), чтобы он не перекрывался с кнопкой
+    ctx.fillText(line, canvas.width / 2, canvas.height / 2 - 40 + i * 32); 
+  });
 }
 
 function randomFreeCell() {
@@ -356,6 +362,7 @@ function draw() {
   if (paused) overlay('Пауза');
   
   if (gameOver) {
+      // Если игра окончена, рисуем оверлей (текст уже нарисован в endGame, но перерисовываем для надежности)
       ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = '#fff';
@@ -364,7 +371,7 @@ function draw() {
       ctx.textBaseline = 'middle';
       const lines = gameOverMsg.split('\n');
       lines.forEach((line, i) => {
-        ctx.fillText(line, canvas.width / 2, canvas.height / 2 - 20 + i * 32);
+        ctx.fillText(line, canvas.width / 2, canvas.height / 2 - 40 + i * 32);
       });
   }
 }

@@ -70,7 +70,7 @@
     }
     .btn-play { background: #2ecc71; }
     .btn-play:hover { background: #27ae60; }
-    .btn-train { background: #f1c40f; } /* Желтая кнопка для тренировки */
+    .btn-train { background: #f1c40f; }
     .btn-train:hover { background: #d4ac0d; }
     .screen button:disabled { background: #30363d; color: #8b949e; cursor: not-allowed; }
 
@@ -84,10 +84,10 @@
     .leaderboard tr.current td { background: rgba(46, 204, 113, 0.08); }
     .leaderboard .empty { text-align: center; color: #484f58; font-style: italic; }
 
-    /* --- Кнопка перезапуска --- */
+    /* --- Кнопка перезапуска (сдвинута ниже) --- */
     #restart-btn {
       position: absolute;
-      top: 50%;
+      top: 65%; /* <--- Сдвинули ниже */
       left: 50%;
       transform: translate(-50%, -50%);
       background: #2ecc71;
