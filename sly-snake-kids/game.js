@@ -23,6 +23,11 @@ let currentPlayer = null;
 let isTrainingMode = false; 
 let gameInterrupted = false; 
 
+// Для мыши
+let mouseX = -100; 
+let mouseY = -100;
+let isHoveringCanvas = false;
+
 let particles = [];
 let celebrationText = '';
 let celebrationTimer = 0;
@@ -63,6 +68,7 @@ function resizeCanvas() {
 }
 window.addEventListener('resize', resizeCanvas);
 
+// --- УПРАВЛЕНИЕ СВАЙПАМИ ---
 let touchStartX = 0, touchStartY = 0;
 window.addEventListener('touchstart', e => {
     touchStartX = e.changedTouches[0].screenX;
@@ -86,6 +92,59 @@ window.addEventListener('touchend', e => {
     }
     if (newDir) nextDir = newDir;
 });
+
+// --- УПРАВЛЕНИЕ МЫШЬЮ ---
+canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    // Переводим координаты мыши в координаты холста (учитываем масштаб)
+    mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
+    mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
+    isHoveringCanvas = true;
+});
+
+canvas.addEventListener('mouseleave', () => {
+    isHoveringCanvas = false;
+});
+
+canvas.addEventListener('mousedown', e => {
+    if (paused || gameOver || !currentPlayer || e.button !== 0) return; // Только левая кнопка
+
+    const rect = canvas.getBoundingClientRect();
+    const clickX = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const clickY = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+    // Вычисляем, куда кликнули относительно головы змейки
+    const head = snake[0];
+    const headCenterX = head.x * CELL + CELL / 2;
+    const headCenterY = head.y * CELL + CELL / 2;
+
+    const dx = clickX - headCenterX;
+    const dy = clickY - headCenterY;
+
+    let newDir = null;
+
+    // Определяем основное направление клика
+    if (Math.abs(dx) > Math.abs(dy)) {
+        if (dx > 0 && dir.x === 0) newDir = { x: 1, y: 0 };
+        else if (dx < 0 && dir.x === 0) newDir = { x: -1, y: 0 };
+    } else {
+        if (dy > 0 && dir.y === 0) newDir = { x: 0, y: 1 };
+        else if (dy < 0 && dir.y === 0) newDir = { x: 0, y: -1 };
+    }
+
+    // Если направление валидное (не разворот на 180) - применяем
+    if (newDir) {
+        nextDir = newDir;
+    } else {
+        // Если кликнули прямо перед носом или сзади, попробуем повернуть в сторону
+        if (dir.x !== 0 && Math.abs(dy) > 10) {
+            nextDir = { x: 0, y: dy > 0 ? 1 : -1 };
+        } else if (dir.y !== 0 && Math.abs(dx) > 10) {
+            nextDir = { x: dx > 0 ? 1 : -1, y: 0 };
+        }
+    }
+});
+
 
 function loadStats() {
   try {
@@ -305,6 +364,20 @@ function draw() {
       ctx.fillStyle = '#fff'; ctx.font = 'bold 24px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       const lines = gameOverMsg.split('\n');
       lines.forEach((line, i) => { ctx.fillText(line, canvas.width / 2, canvas.height / 2 - 40 + i * 32); });
+  }
+
+  // --- РИСУЕМ ПРИЦЕЛ МЫШИ ---
+  if (isHoveringCanvas && !paused && !gameOver && currentPlayer) {
+      ctx.beginPath();
+      ctx.arc(mouseX, mouseY, 8, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(46, 204, 113, 0.7)'; // Зеленоватый прицел
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      
+      ctx.beginPath();
+      ctx.arc(mouseX, mouseY, 2, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(46, 204, 113, 0.7)';
+      ctx.fill();
   }
 }
 
