@@ -37,7 +37,6 @@ function createParticles() {
         });
     }
 }
-
 function updateParticles() {
     for (let i = particles.length - 1; i >= 0; i--) {
         let p = particles[i];
@@ -45,7 +44,6 @@ function updateParticles() {
         if (p.life <= 0) particles.splice(i, 1);
     }
 }
-
 function drawParticles() {
     particles.forEach(p => {
         ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
@@ -61,7 +59,6 @@ function resizeCanvas() {
 }
 window.addEventListener('resize', resizeCanvas);
 
-// Управление свайпами
 let touchStartX = 0, touchStartY = 0;
 window.addEventListener('touchstart', e => {
     touchStartX = e.changedTouches[0].screenX;
@@ -86,7 +83,6 @@ window.addEventListener('touchend', e => {
     if (newDir) nextDir = newDir;
 });
 
-// Статистика
 function loadStats() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -132,28 +128,25 @@ function renderLeaderboard(highlightName) {
   html += '</table>';
   box.innerHTML = html;
 }
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
 function showNameScreen() {
   const input = document.getElementById('playerInput');
   const startBtn = document.getElementById('startBtn');
   const trainBtn = document.getElementById('trainBtn');
   const screen = document.getElementById('nameScreen');
-
   const last = localStorage.getItem(LAST_PLAYER_KEY) || '';
+  
   input.value = last;
   const disable = last.trim().length === 0;
   startBtn.disabled = disable;
   trainBtn.disabled = disable;
-
   renderLeaderboard(last);
   screen.classList.remove('hidden');
   
   pauseMenu.classList.add('hidden'); 
   pauseBtn.classList.add('hidden');
+  restartBtn.classList.add('hidden');
   
   setTimeout(() => input.focus(), 50);
 }
@@ -170,7 +163,6 @@ function startWithPlayer(name, trainingMode = false) {
 
   const p = getPlayerStats(name);
   document.getElementById('bestScore').textContent = p.bestScore;
-
   init();
 }
 
@@ -178,7 +170,8 @@ function init() {
   resizeCanvas();
   restartBtn.classList.add('hidden'); 
   pauseMenu.classList.add('hidden');
-  pauseBtn.classList.remove('hidden'); // Показываем кнопку паузы при старте
+  pauseBtn.classList.remove('hidden'); 
+  pauseBtn.textContent = '⏸';
   
   particles = []; celebrationTimer = 0; nextCelebrationScore = 100; 
   
@@ -243,7 +236,7 @@ function endGame(msg) {
   const p = getPlayerStats(currentPlayer);
   document.getElementById('bestScore').textContent = p.bestScore;
   
-  pauseBtn.classList.add('hidden'); // Прячем кнопку паузы
+  pauseBtn.classList.add('hidden'); 
   restartBtn.classList.remove('hidden');
   draw(); 
 }
@@ -274,7 +267,6 @@ function draw() {
   });
 
   drawSnakeFace(snake[0], dir);
-
   if (particles.length > 0) drawParticles();
 
   if (celebrationTimer > 0) {
@@ -343,17 +335,11 @@ function updateHUD() {
   document.getElementById('apples').textContent = apples;
 }
 
-// --- СОБЫТИЯ ---
 document.addEventListener('keydown', (e) => {
   const key = e.key.toLowerCase();
-
   if (key === 'p') { clearTimeout(timer); gameOver = true; paused = true; pauseBtn.classList.add('hidden'); showNameScreen(); return; }
   if (key === 'r') { if (currentPlayer) init(); return; }
-  if (key === ' ') {
-    e.preventDefault();
-    if (!gameOver && currentPlayer) { togglePause(); }
-    return;
-  }
+  if (key === ' ') { e.preventDefault(); if (!gameOver && currentPlayer) { togglePause(); } return; }
   if (paused || gameOver || !currentPlayer) return;
 
   let newDir = null;
@@ -362,12 +348,9 @@ document.addEventListener('keydown', (e) => {
   if (key === 'arrowleft' || key === 'a') newDir = { x: -1, y: 0 };
   if (key === 'arrowright' || key === 'd') newDir = { x: 1, y: 0 };
   if (!newDir) return;
-
   if (newDir.x === -dir.x && newDir.y === -dir.y) return;
   nextDir = newDir;
 });
-
-// --- ОБРАБОТЧИКИ НОВЫХ КНОПОК ---
 
 function togglePause() {
     if (gameOver || !currentPlayer) return;
@@ -382,26 +365,22 @@ function togglePause() {
     }
 }
 
-pauseBtn.addEventListener('click', togglePause);
-
-btnResume.addEventListener('click', () => {
+// Добавляем touchstart для кнопки паузы (мгновенный отклик на телефоне)
+pauseBtn.addEventListener('touchstart', (e) => {
+    e.preventDefault(); 
     togglePause();
 });
+pauseBtn.addEventListener('click', togglePause);
 
-btnRestart.addEventListener('click', () => {
-    init();
-});
-
+btnResume.addEventListener('click', togglePause);
+btnRestart.addEventListener('click', init);
 btnQuit.addEventListener('click', () => {
     clearTimeout(timer);
-    gameOver = true; // Останавливаем игру
-    paused = false;
+    gameOver = true; paused = false;
     showNameScreen();
 });
 
-restartBtn.addEventListener('click', () => {
-    if (currentPlayer) init();
-});
+restartBtn.addEventListener('click', () => { if (currentPlayer) init(); });
 
 (function setupNameScreen() {
   const input = document.getElementById('playerInput');
@@ -413,14 +392,4 @@ restartBtn.addEventListener('click', () => {
     startBtn.disabled = isDisabled;
     trainBtn.disabled = isDisabled;
   });
-  
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !startBtn.disabled) startWithPlayer(input.value, false);
-  });
-  
-  startBtn.addEventListener('click', () => startWithPlayer(input.value, false));
-  trainBtn.addEventListener('click', () => startWithPlayer(input.value, true));
-})();
-
-// Запуск
-showNameScreen();
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !startBtn.disabled
